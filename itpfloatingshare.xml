@@ -294,7 +294,7 @@
 				   <option value="right">Counter Right</option>
 				</field>  
                 
-                <field name="spacer9" type="spacer" class="text" label="############# RETWEETME SETTINGS #############" />
+                <field name="spacer8" type="spacer" class="text" label="############# RETWEETME SETTINGS #############" />
                 <field name="retweetmeButton" type="radio" default="0" label="ReTweetMe Button" description="Show or hide ReTweetMe button." >
                    <option value="0">Hide</option>
                    <option value="1">Show</option>
@@ -304,7 +304,7 @@
                    <option value="normal">Normal</option>
                 </field>
                 
-                <field name="spacer8" type="spacer" class="text" label="############# REDDIT SETTINGS #############" />
+                <field name="spacer10" type="spacer" class="text" label="############# REDDIT SETTINGS #############" />
                 <field name="redditButton" type="radio" default="0" label="Reddit Button" description="Show or hide Reddit button." >
                    <option value="0">Hide</option>
                    <option value="1">Show</option>

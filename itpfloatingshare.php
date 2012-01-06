@@ -11,7 +11,7 @@
  */
 
 // Check to ensure this file is included in Joomla!
-defined('_JEXEC') or die('Restricted access');
+defined('_JEXEC') or die;
 
 jimport('joomla.plugin.plugin');
 
@@ -20,7 +20,6 @@ jimport('joomla.plugin.plugin');
  *
  * @package		ITPrism Plugins
  * @subpackage	Social
- * @since 		1.5
  */
 class plgContentITPFloatingShare extends JPlugin {
     
@@ -34,7 +33,6 @@ class plgContentITPFloatingShare extends JPlugin {
      * @param array  $config  An optional associative array of configuration settings.
      * Recognized key values include 'name', 'group', 'params', 'language'
      * (this list is not meant to be comprehensive).
-     * @since 1.5
      */
     public function __construct(&$subject, $config = array()) {
         parent::__construct($subject, $config);
@@ -58,7 +56,6 @@ class plgContentITPFloatingShare extends JPlugin {
      * @param   object  The content object.  Note $article->text is also available
      * @param   object  The content params
      * @param   int     The 'page' number
-     * @since   1.6
      */
     public function onContentPrepare($context, &$article, &$params, $page = 0) {
 
@@ -315,7 +312,6 @@ class plgContentITPFloatingShare extends JPlugin {
     /**
      * Generate the Google +1 button
      * 
-     * 
      * @param unknown_type $params
      * @param unknown_type $url
      * @param unknown_type $title
@@ -425,7 +421,7 @@ class plgContentITPFloatingShare extends JPlugin {
     }
     
         
-private function getFacebookLike($params, $url, $title){
+    private function getFacebookLike($params, $url, $title){
         
         $html = "";
         if($params->get("facebookLikeButton")) {
@@ -603,7 +599,7 @@ href="http://digg.com/submit?url=' . rawurlencode($url) . '&amp;title=' . rawurl
             
             $html = '
             <div class="itp-fshare-su">
-            <script src="http://www.stumbleupon.com/hostedbadge.php?s=' . $params->get("stumbleType",1). '&r=' . rawurlencode($url) . '"></script>
+            <script src="http://www.stumbleupon.com/hostedbadge.php?s=' . $params->get("stumbleType",1). '&amp;r=' . rawurlencode($url) . '"></script>
             </div>
             ';
         }
