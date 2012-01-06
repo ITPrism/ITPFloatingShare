@@ -301,7 +301,7 @@ class plgContentITPFloatingShare extends JPlugin {
         
         $html = "";
         if($params->get("twitterButton")) {
-            $html = '
+            $html .= '
             <div class="itp-fshare-tw">
             	<a href="https://twitter.com/share" class="twitter-share-button" data-url="' . $url . '" data-text="' . $title . '" data-via="' . $params->get("twitterName") . '" data-lang="' . $params->get("twitterLanguage") . '" data-size="' . $params->get("twitterSize") . '" data-related="' . $params->get("twitterRecommend") . '" data-hashtags="' . $params->get("twitterHashtag") . '" data-count="' . $params->get("twitterCounter") . '">Tweet</a>
             	<script type="text/javascript">!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
@@ -465,7 +465,6 @@ private function getFacebookLike($params, $url, $title){
     private function genFacebookLikeIframe($params, $url, $layout, $faces, $height) {
         
         $html = '
-            <div class="itp-share-fbl">
             <iframe src="http://www.facebook.com/plugins/like.php?';
             
             if($params->get("facebookLikeAppId")) {
@@ -480,7 +479,6 @@ private function getFacebookLike($params, $url, $title){
                 $html .= "&amp;appId=" . $params->get("facebookLikeAppId");
             }
             $html .= '" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:' . $params->get("facebookLikeWidth", "450") . 'px; height:' . $height . 'px;" allowTransparency="true"></iframe>
-            </div>
         ';
             
         return $html;
