@@ -11,7 +11,7 @@
  */
 
 // Check to ensure this file is included in Joomla!
-defined('_JEXEC') or die('Restricted access');
+defined('_JEXEC') or die;
 
 jimport('joomla.plugin.plugin');
 
@@ -25,20 +25,11 @@ jimport('joomla.plugin.plugin');
 class plgContentITPFloatingShare extends JPlugin {
     
     private $fbLocale = "en_US";
-    private $currentView = "";
     
-    /**
-     * Constructor
-     *
-     * @param object $subject The object to observe
-     * @param array  $config  An optional associative array of configuration settings.
-     * Recognized key values include 'name', 'group', 'params', 'language'
-     * (this list is not meant to be comprehensive).
-     * @since 1.5
-     */
-    public function __construct(&$subject, $config = array()) {
-        parent::__construct($subject, $config);
+    public function __construct($subject, $params){
         
+        parent::__construct($subject, $params);
+    
         if($this->params->get("fbDynamicLocale", 0)) {
             $lang = JFactory::getLanguage();
             $locale = $lang->getTag();
@@ -58,9 +49,8 @@ class plgContentITPFloatingShare extends JPlugin {
      * @param   object  The content object.  Note $article->text is also available
      * @param   object  The content params
      * @param   int     The 'page' number
-     * @since   1.6
      */
-    public function onContentPrepare($context, &$article, &$params, $page = 0) {
+    public function onPrepareContent(&$article, &$params, $limitstart){
 
         $app =& JFactory::getApplication();
         /* @var $app JApplication */
@@ -69,7 +59,7 @@ class plgContentITPFloatingShare extends JPlugin {
             return;
         }
         
-        $doc     = JFactory::getDocument();
+        $doc   = JFactory::getDocument();
         /* @var $doc JDocumentHtml */
         $docType = $doc->getType();
         
@@ -80,82 +70,17 @@ class plgContentITPFloatingShare extends JPlugin {
         
         $currentOption = JRequest::getCmd("option");
         
-        if( ($currentOption != "com_content") OR !isset($this->params)) {
+        if(($currentOption != "com_content") OR !isset($article) OR empty($article->id) OR !isset($this->params)) {
             return;            
         }
         
-        $this->currentView  = JRequest::getCmd("view");
-        
-        /** Check for selected views, which will display the buttons. **/   
-        /** If there is a specific set and do not match, return an empty string.**/
-        $showInArticles     = $this->params->get('showInArticles');
-        
-        if(!$showInArticles AND (strcmp("article", $this->currentView) == 0)){
-            return "";
-        }
-        
-        // Checks the property for rendering only in the view 'article'
-        if( (strcmp($this->currentView, "article") != 0) AND ( 1 == $this->params->get("position",3) AND $this->params->get("onlyArticles",1) ) ){
-            return "";
-        }
-        
-        // Check for category view
-        $showInCategories   = $this->params->get('showInCategories');
-        
-        if(!$showInCategories AND (strcmp("category", $this->currentView) == 0)){
-            return;
-        }
-        
-        if($showInCategories AND ($this->currentView == "category")) {
-            $articleData        = $this->getArticle($article);
-            $article->id        = $articleData['id'];
-            $article->catid     = $articleData['catid'];
-            $article->title     = $articleData['title'];
-            $article->slug      = $articleData['slug'];
-            $article->catslug   = $articleData['catslug'];
-        }
-        
-        if(empty($article->id)) {
-            return;            
-        }
-        
-        $excludeArticles = $this->params->get('excludeArticles');
-        if(!empty($excludeArticles)){
-            $excludeArticles = explode(',', $excludeArticles);
-        }
-        settype($excludeArticles, 'array');
-        JArrayHelper::toInteger($excludeArticles);
-        
-        // Exluded categories
-        $excludedCats           = $this->params->get('excludeCats');
-        if(!empty($excludedCats)){
-            $excludedCats = explode(',', $excludedCats);
-        }
-        settype($excludedCats, 'array');
-        JArrayHelper::toInteger($excludedCats);
-        
-        // Included Articles
-        $includedArticles = $this->params->get('includeArticles');
-        if(!empty($includedArticles)){
-            $includedArticles = explode(',', $includedArticles);
-        }
-        settype($includedArticles, 'array');
-        JArrayHelper::toInteger($includedArticles);
-        
-        if(!in_array($article->id, $includedArticles)) {
-            // Check exluded places
-            if(in_array($article->id, $excludeArticles) OR in_array($article->catid, $excludedCats)){
-                return;
-            }
-        }
-            
-        // Generate content
-        $content      = $this->getContent($article, $params);
-        $position     = $this->params->get('position');
+        // Generate buttons
+        $buttons    = $this->getContent($article, $params);
+        $position   = $this->params->get('position');
         
         switch($position){
             case 1: // Floating
-                $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
+                $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $buttons . '</div>';
                 $article->text = $html . $article->text;
                 
                 if($this->params->get("resizeProtection")) {
@@ -190,7 +115,7 @@ class plgContentITPFloatingShare extends JPlugin {
                 
                 $position = (2==$position) ? "itp-fshare-left" : "itp-fshare-right";
                 
-                $html = '<div class="' . $position . '">' . $content . '</div>'; 
+                $html = '<div class="' . $position . '">' . $buttons . '</div>'; 
                 
                 $article->text = $html . $article->text;
                 
@@ -208,17 +133,83 @@ class plgContentITPFloatingShare extends JPlugin {
      */
     private function getContent(&$article, &$params){
         
-        $doc   = JFactory::getDocument();
-        /* @var $doc JDocumentHtml */
+        $doc         = JFactory::getDocument();
+        $currentView = JRequest::getWord("view");
         
-        if($this->params->get("loadCss")) {
-            $doc->addStyleSheet(JURI::root() . "plugins/content/itpfloatingshare/style.css");
+        // Check where we are able to show buttons?
+        $showInArticles     = $this->params->get('showInArticles');
+        $showInCategories   = $this->params->get('showInCategories');
+        $showInSections     = $this->params->get('showInSections');
+        $showInFrontPage    = $this->params->get('showInFrontPage');
+        
+        /** Check for selected views, which will display the buttons. **/   
+        /** If there is a specific set and do not match, return an empty string.**/
+        if(!$showInArticles AND (strcmp("article", $currentView) == 0)){
+            return "";
         }
         
-        $url = JURI::getInstance();
-        $root= $url->getScheme() ."://" . $url->getHost();
+        if(!$showInCategories AND (strcmp("category", $currentView) == 0)){
+            return "";
+        }
         
-        $url = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug), false);
+        if(!$showInSections AND (strcmp("section", $currentView) == 0)){
+            return "";
+        }
+        
+        if(!$showInFrontPage AND (strcmp("frontpage", $currentView) == 0)){
+            return "";
+        }
+        
+        // Checks the property for rendering only in the view 'article'
+        if( ( 1 == $this->params->get("position",3) ) AND $this->params->get("onlyArticles",1) AND (strcmp($currentView, "article") != 0)){
+            return "";
+        }
+        
+        $excludedCats = $this->params->get('excludeCats');
+        if(!empty($excludedCats)){
+            $excludedCats = explode(',', $excludedCats);
+        }
+        settype($excludedCats, 'array');
+        
+        // Exclude sections
+        $excludeSections = $this->params->get('excludeSections');
+        if(!empty($excludeSections)){
+            $excludeSections = explode(',', $excludeSections);
+        }
+        settype($excludeSections, 'array');
+        JArrayHelper::toInteger($excludeSections);
+        
+        // Exclude articles
+        $excludeArticles = $this->params->get('excludeArticles');
+        if(!empty($excludeArticles)){
+            $excludeArticles = explode(',', $excludeArticles);
+        }
+        settype($excludeArticles, 'array');
+        JArrayHelper::toInteger($excludeArticles);
+        
+        // Included Articles
+        $includedArticles = $this->params->get('includeArticles');
+        if(!empty($includedArticles)){
+            $includedArticles = explode(',', $includedArticles);
+        }
+        settype($includedArticles, 'array');
+        JArrayHelper::toInteger($includedArticles);
+        
+        if(!in_array($article->id, $includedArticles)) {
+            // Check exluded views
+            if(in_array($article->catid, $excludedCats) OR in_array($article->sectionid, $excludeSections) OR in_array($article->id, $excludeArticles)){
+                return "";
+            }
+        }
+        
+        if($this->params->get("loadCss")) {
+            $doc->addStyleSheet(JURI::base() . "plugins/content/itpfloatingshare/style.css");
+        }
+        
+        $uri = JFactory::getURI();
+        $root= $uri->getScheme() ."://" . $uri->getHost();
+        
+        $url = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug, $article->sectionid));
         $url = $root.$url;
         
         $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
@@ -240,41 +231,6 @@ class plgContentITPFloatingShare extends JPlugin {
         
         return $html;
     
-    }
-    
-    private function getArticle(&$article) {
-        
-        $db = JFactory::getDbo();
-        
-        $query = "
-            SELECT 
-                `#__content`.`id`,
-                `#__content`.`catid`,
-                `#__content`.`alias`,
-                `#__content`.`title`,
-                `#__categories`.`alias` as category_alias
-            FROM
-                `#__content`
-            INNER JOIN
-                `#__categories`
-            ON
-                `#__content`.`catid`=`#__categories`.`id`
-            WHERE
-                `#__content`.`introtext` = " . $db->Quote($article->text); 
-        
-        $db->setQuery($query);
-        $result = $db->loadAssoc();
-        
-        if ($db->getErrorNum() != 0) {
-            JError::raiseError(500, "System error!", $db->getErrorMsg());
-        }
-        
-        if(!empty($result)) {
-            $result['slug'] = $result['alias'] ? ($result['id'].':'.$result['alias']) : $result['id'];
-            $result['catslug'] = $result['category_alias'] ? ($result['catid'].':'.$result['category_alias']) : $result['catid'];
-        }
-        
-        return $result;
     }
     
     /**
@@ -312,9 +268,8 @@ class plgContentITPFloatingShare extends JPlugin {
         return $html;
     }
     
-    /**
+	/**
      * Generate the Google +1 button
-     * 
      * 
      * @param unknown_type $params
      * @param unknown_type $url
@@ -425,7 +380,7 @@ class plgContentITPFloatingShare extends JPlugin {
     }
     
         
-private function getFacebookLike($params, $url, $title){
+    private function getFacebookLike($params, $url, $title){
         
         $html = "";
         if($params->get("facebookLikeButton")) {
@@ -603,7 +558,7 @@ href="http://digg.com/submit?url=' . rawurlencode($url) . '&amp;title=' . rawurl
             
             $html = '
             <div class="itp-fshare-su">
-            <script src="http://www.stumbleupon.com/hostedbadge.php?s=' . $params->get("stumbleType",1). '&r=' . rawurlencode($url) . '"></script>
+            <script src="http://www.stumbleupon.com/hostedbadge.php?s=' . $params->get("stumbleType",1). '&amp;r=' . rawurlencode($url) . '"></script>
             </div>
             ';
         }
@@ -618,7 +573,7 @@ href="http://digg.com/submit?url=' . rawurlencode($url) . '&amp;title=' . rawurl
             
             $html = '
             <div class="itp-fshare-lin">
-            <script type="text/javascript" src="http://platform.linkedin.com/in.js"></script><script type="in/share" data-url="' . $url . '" data-counter="' . $params->get("linkedInType",'right'). '"></script>
+            	<script type="text/javascript" src="http://platform.linkedin.com/in.js"></script><script type="in/share" data-url="' . $url . '" data-counter="' . $params->get("linkedInType",'right'). '"></script>
             </div>
             ';
         }
