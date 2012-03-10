@@ -1,11 +1,21 @@
 ITPFloatingShare Plugin for Joomla! 
 ==========================
-( Version 1.2 )
+( Version 1.3 )
 --------------------------
 
 
 Changelog
 ---------
+
+v1.3
+-----
+* Now works for K2
+* Now works for VirtueMart
+* The buttons appear on the front page ( on the featured articles )
+* Added Pinterest button
+* Added BufferApp button
+* Fixed floating position
+* Improved languages
 
 v1.2
 -----

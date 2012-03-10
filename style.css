@@ -23,15 +23,16 @@
     background-color:#fff;
     border:1px solid #ccc;
     padding:0 0 5px 0;
+    text-align:center  !important;
     width: 80px;
 }
 
 .itp-fshare-tw{
-    margin:10px 0 0 0;
+    margin:10px 0 0 5px;
 }
 
 .itp-fshare-fbl{
-    margin:10px 0 0 17px;
+    margin:10px 0 0 19px;
 }
 .itp-fshare-digg{
 	margin:10px 0;
@@ -41,11 +42,11 @@
 	margin:10px 0 0 7px;
 }
 .itp-fshare-lin{
-	margin:10px 0 0 9px;
+	margin:10px 0 0 6px;
 }
 
 .itp-fshare-gone{
-    margin:10px 0;
+    margin:10px 0 0 5px;
 }
 
 
@@ -65,3 +66,10 @@
     margin: 10px 0 0 0;
 }
 
+.itp-fshare-pinterest {
+    margin: 10px 0 0 5px;
+}
+
+.itp-fshare-buffer {
+    margin: 10px 0 0 5px;
+}
