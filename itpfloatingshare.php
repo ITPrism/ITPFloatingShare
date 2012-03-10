@@ -24,19 +24,33 @@ jimport('joomla.plugin.plugin');
  */
 class plgContentITPFloatingShare extends JPlugin {
     
-    private $fbLocale = "en_US";
+    private $locale         = "en_US";
+    private $fbLocale       = "en_US";
+    private $plusLocale     = "en";
+    private $twitterLocale  = "en";
+    private $currentView    = "";
+    private $currentOption  = "";
     
     public function __construct($subject, $params){
         
         parent::__construct($subject, $params);
     
-        if($this->params->get("fbDynamicLocale", 0)) {
+        $app =& JFactory::getApplication();
+        /* @var $app JApplication */
+
+        if($app->isAdmin()) {
+            return;
+        }
+        
+        // Get locale code automatically
+        if($this->params->get("dynamicLocale", 0)) {
             $lang = JFactory::getLanguage();
             $locale = $lang->getTag();
-            $this->fbLocale = str_replace("-","_",$locale);
-        } else {
-            $this->fbLocale = $this->params->get("fbLocale", "en_US");
+            $this->locale = str_replace("-","_",$locale);
         }
+        
+        $this->currentView    = JRequest::getCmd("view");
+        $this->currentOption  = JRequest::getCmd("option");
         
     }
     
@@ -52,15 +66,17 @@ class plgContentITPFloatingShare extends JPlugin {
      */
     public function onPrepareContent(&$article, &$params, $limitstart){
 
+        if (!is_a($article, "stdClass") OR !isset($this->params) ) { return; };        
+        
         $app =& JFactory::getApplication();
-        /* @var $app JApplication */
+        /** @var $app JApplication **/
 
         if($app->isAdmin()) {
             return;
         }
         
         $doc   = JFactory::getDocument();
-        /* @var $doc JDocumentHtml */
+        /** @var $doc JDocumentHtml **/
         $docType = $doc->getType();
         
         // Check document type
@@ -68,54 +84,51 @@ class plgContentITPFloatingShare extends JPlugin {
             return;
         }
         
-        $currentOption = JRequest::getCmd("option");
+        // Generate context value
+        $context = $this->currentOption.".".$this->currentView;
         
-        if(($currentOption != "com_content") OR !isset($article) OR empty($article->id) OR !isset($this->params)) {
-            return;            
+        switch($this->currentOption) {
+            case "com_content":
+                if($this->isContentRestricted($article, $context)) {
+                    return;
+                }
+                break;    
+                
+             case "com_k2":
+                if($this->isK2Restricted($article, $context)) {
+                    return;
+                }
+                break;
+                
+            case "com_virtuemart":
+                if($this->isVirtuemartRestricted($article, $context)) {
+                    return;
+                }
+                break;
+                
+            default:
+                return;
+                break;   
         }
         
-        // Generate buttons
-        $buttons    = $this->getContent($article, $params);
+        if($this->params->get("loadCss")) {
+            $doc->addStyleSheet(JURI::root() . "plugins/content/itpfloatingshare/style.css");
+        }
+        
+        // Generate content
+        $content    = $this->getContent($article, $params);
         $position   = $this->params->get('position');
         
         switch($position){
             case 1: // Floating
-                $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $buttons . '</div>';
-                $article->text = $html . $article->text;
-                
-                if($this->params->get("resizeProtection")) {
-                    $js = '
-                    window.addEvent( "domready" ,  function() {
-                    
-                        var timer;
-                        var style;
-                        
-                        window.addEvent("resize", function(){
-                              $clear(timer);
-                              timer = (function(){
-                                  if (window.outerHeight < screen.availHeight) {
-                                    $("itp-fshare").set("class", "itp-fshare-right");
-                                    style = $("itp-fshare").get("style");
-                                    $("itp-fshare").erase("style");
-                                   } else {
-                                     $("itp-fshare").set("class","itp-fshare-floating");
-                                     $("itp-fshare").set("style", style);
-                                   }
-                              }).delay(50);
-                              
-                        });
-                        
-                     })';
-                    
-                    $doc->addScriptDeclaration($js);
-                }
+                $article->text = $this->genFloating($content) . $article->text;
                 break;
             case 2: //Left 
             default: // Right
                 
                 $position = (2==$position) ? "itp-fshare-left" : "itp-fshare-right";
                 
-                $html = '<div class="' . $position . '">' . $buttons . '</div>'; 
+                $html = '<div class="' . $position . '">' . $content . '</div>'; 
                 
                 $article->text = $html . $article->text;
                 
@@ -125,16 +138,49 @@ class plgContentITPFloatingShare extends JPlugin {
         return true;
     }
     
-    /**
-     * Generate content
-     * @param   object      The article object.  Note $article->text is also available
-     * @param   object      The article params
-     * @return  string      Returns html code or empty string.
-     */
-    private function getContent(&$article, &$params){
+    private function genFloating($content) {
+        $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
         
-        $doc         = JFactory::getDocument();
-        $currentView = JRequest::getWord("view");
+        if($this->params->get("resizeProtection")) {
+            $js = '
+            window.addEvent( "domready" ,  function() {
+            
+                document.itpFloatingTimer = null;
+                document.itpFloatingStyle = null;
+                
+                window.addEvent("resize", function(){
+                	  
+                      window.clearTimeout(document.itpFloatingTimer);
+                      
+                      document.itpFloatingTimer = (function(){
+                          if (window.outerHeight < screen.availHeight) {
+                            document.id("itp-fshare").set("class", "itp-fshare-right");
+                            document.itpFloatingStyle = document.id("itp-fshare").get("style");
+                            document.id("itp-fshare").erase("style");
+                           } else {
+                             document.id("itp-fshare").set("class","itp-fshare-floating");
+                             document.id("itp-fshare").set("style", document.itpFloatingStyle);
+                           }
+                      }).delay(50);
+                      
+                });
+                
+             })';
+            
+            $doc     = JFactory::getDocument();
+        	/** @var $doc JDocumentHtml **/
+            $doc->addScriptDeclaration($js);
+        }
+        
+        return $html;
+    }
+    
+    private function isContentRestricted(&$article, $context) {
+        
+        // Check for currect context
+        if(strpos($context, "com_content") === false) {
+           return true;
+        }
         
         // Check where we are able to show buttons?
         $showInArticles     = $this->params->get('showInArticles');
@@ -144,25 +190,25 @@ class plgContentITPFloatingShare extends JPlugin {
         
         /** Check for selected views, which will display the buttons. **/   
         /** If there is a specific set and do not match, return an empty string.**/
-        if(!$showInArticles AND (strcmp("article", $currentView) == 0)){
-            return "";
+        if(!$showInArticles AND (strcmp("article", $this->currentView) == 0)){
+            return true;
         }
         
-        if(!$showInCategories AND (strcmp("category", $currentView) == 0)){
-            return "";
+        if(!$showInCategories AND (strcmp("category", $this->currentView) == 0)){
+            return true;
         }
         
-        if(!$showInSections AND (strcmp("section", $currentView) == 0)){
-            return "";
+        if(!$showInSections AND (strcmp("section", $this->currentView) == 0)){
+            return true;
         }
         
-        if(!$showInFrontPage AND (strcmp("frontpage", $currentView) == 0)){
-            return "";
+        if(!$showInFrontPage AND (strcmp("frontpage", $this->currentView) == 0)){
+            return true;
         }
         
         // Checks the property for rendering only in the view 'article'
-        if( ( 1 == $this->params->get("position",3) ) AND $this->params->get("onlyArticles",1) AND (strcmp($currentView, "article") != 0)){
-            return "";
+        if( (strcmp("article", $this->currentView) != 0) AND ( 1 == $this->params->get("position") AND $this->params->get("onlyArticles",1) ) ){
+            return true;
         }
         
         $excludedCats = $this->params->get('excludeCats');
@@ -170,6 +216,7 @@ class plgContentITPFloatingShare extends JPlugin {
             $excludedCats = explode(',', $excludedCats);
         }
         settype($excludedCats, 'array');
+        JArrayHelper::toInteger($excludedCats);
         
         // Exclude sections
         $excludeSections = $this->params->get('excludeSections');
@@ -198,39 +245,111 @@ class plgContentITPFloatingShare extends JPlugin {
         if(!in_array($article->id, $includedArticles)) {
             // Check exluded views
             if(in_array($article->catid, $excludedCats) OR in_array($article->sectionid, $excludeSections) OR in_array($article->id, $excludeArticles)){
-                return "";
+                return true;
             }
         }
         
-        if($this->params->get("loadCss")) {
-            $doc->addStyleSheet(JURI::base() . "plugins/content/itpfloatingshare/style.css");
+        return false; 
+    }
+    
+    private function isK2Restricted(&$article, $context) {
+        
+        // Check for currect context
+        if(strpos($context, "com_k2") === false) {
+           return true;
         }
+    }
+    
+    private function isVirtuemartRestricted(&$article, $context) {
+            
+        // Check for currect context
+        if(strpos($context, "com_virtuemart") === false) {
+           return true;
+        }
+    }
+    
+    /**
+     * Generate content
+     * @param   object      The article object.  Note $article->text is also available
+     * @param   object      The article params
+     * @return  string      Returns html code or empty string.
+     */
+    private function getContent(&$article, &$params){
         
-        $uri = JFactory::getURI();
-        $root= $uri->getScheme() ."://" . $uri->getHost();
-        
-        $url = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug, $article->sectionid));
-        $url = $root.$url;
-        
-        $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
+        $url  = $this->getUrl($article);
+        $title= $this->getTitle($article);
         
         $html   = "";
-        $html   .= $this->getTwitter($this->params, $url, $title);
-        $html   .= $this->getGooglePlusOne($this->params, $url, $title);
-        $html   .= $this->getFacebookLike($this->params, $url, $title);
-        
-        $html   .= $this->getDigg($this->params, $url, $title);
-        $html   .= $this->getStumbpleUpon($this->params, $url, $title);
-        $html   .= $this->getLinkedIn($this->params, $url, $title);
-        $html   .= $this->getReTweetMeMe($this->params, $url, $title);
-        $html   .= $this->getReddit($this->params, $url, $title);
-        $html   .= $this->getTumblr($this->params, $url, $title);
+        $html .= $this->getTwitter($this->params, $url, $title);
+        $html .= $this->getDigg($this->params, $url, $title);
+        $html .= $this->getStumbpleUpon($this->params, $url, $title);
+        $html .= $this->getLinkedIn($this->params, $url, $title);
+        $html .= $this->getTumblr($this->params, $url, $title);
+        $html .= $this->getBuffer($this->params, $url, $title);
+        $html .= $this->getPinterest($this->params, $url, $title);
+        $html .= $this->getReddit($this->params, $url, $title);
+        $html .= $this->getReTweetMeMe($this->params, $url, $title);
+
+        $html .= $this->getFacebookLike($this->params, $url, $title);
+        $html .= $this->getGooglePlusOne($this->params, $url, $title);
         
         // Gets extra buttons
         $html   .= $this->getExtraButtons($this->params, $url, $title);
         
         return $html;
     
+    }
+    
+    private function getUrl(&$article) {
+        
+        $url = JURI::getInstance();
+        $domain= $url->getScheme() ."://" . $url->getHost();
+        
+        switch($this->currentOption) {
+            case "com_content":
+                $uri = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug), false);
+                break;    
+                
+            case "com_k2":
+                $uri = $article->link;
+                break;
+                
+            case "com_virtuemart":
+                $uri = $article->link;
+                break;
+                
+            default:
+                $uri = "";
+                break;   
+        }
+        
+        return $domain.$uri;
+        
+    }
+    
+    private function getTitle(&$article) {
+        
+        switch($this->currentOption) {
+            case "com_content":
+                $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
+                break;    
+                
+            case "com_k2":
+                $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
+                break;
+                
+            case "com_virtuemart":
+                $title = (!empty($article->custom_title)) ? $article->custom_title : $article->product_name;
+                $title= htmlentities($title, ENT_QUOTES, "UTF-8");
+                break;
+                
+            default:
+                $title = "";
+                break;   
+        }
+        
+        return $title;
+        
     }
     
     /**
@@ -257,9 +376,18 @@ class plgContentITPFloatingShare extends JPlugin {
         
         $html = "";
         if($params->get("twitterButton")) {
+            
+            // Get locale code
+            if(!$params->get("dynamicLocale")) {
+                $this->twitterLocale = $params->get("twitterLanguage");
+            } else {
+                $locales = $this->getButtonsLocales($this->locale); 
+                $this->twitterLocale = JArrayHelper::getValue($locales, "twitter", "en");
+            }
+            
             $html .= '
             <div class="itp-fshare-tw">
-            	<a href="https://twitter.com/share" class="twitter-share-button" data-url="' . $url . '" data-text="' . $title . '" data-via="' . $params->get("twitterName") . '" data-lang="' . $params->get("twitterLanguage") . '" data-size="' . $params->get("twitterSize") . '" data-related="' . $params->get("twitterRecommend") . '" data-hashtags="' . $params->get("twitterHashtag") . '" data-count="' . $params->get("twitterCounter") . '">Tweet</a>
+            	<a href="https://twitter.com/share" class="twitter-share-button" data-url="' . $url . '" data-text="' . $title . '" data-via="' . $params->get("twitterName") . '" data-lang="' . $this->twitterLocale . '" data-size="' . $params->get("twitterSize") . '" data-related="' . $params->get("twitterRecommend") . '" data-hashtags="' . $params->get("twitterHashtag") . '" data-count="' . $params->get("twitterCounter") . '">Tweet</a>
             	<script type="text/javascript">!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
             </div>
             ';
@@ -271,19 +399,27 @@ class plgContentITPFloatingShare extends JPlugin {
 	/**
      * Generate the Google +1 button
      * 
-     * @param unknown_type $params
-     * @param unknown_type $url
-     * @param unknown_type $title
+     * @param object $params
+     * @param string $url
+     * @param string $title
      */
     private function getGooglePlusOne($params, $url, $title){
-        $language = "";
-        
-        if($params->get("plusLocale")) {
-            $language = " {lang: '" . $params->get("plusLocale") . "'};";
-        }
         
         $html = "";
         if($params->get("plusButton")) {
+            
+            $language = "";
+        
+            // Get locale code
+            if(!$params->get("dynamicLocale")) {
+                $this->plusLocale = $params->get("plusLocale");
+            } else {
+                $locales = $this->getButtonsLocales($this->locale); 
+                $this->plusLocale = JArrayHelper::getValue($locales, "google", "en");
+            }
+            
+            $language = " {lang: '" . $this->plusLocale . "'};";
+            
             $html .= '<div class="itp-fshare-gone">';
             
             switch($params->get("plusRenderer")) {
@@ -384,6 +520,14 @@ class plgContentITPFloatingShare extends JPlugin {
         
         $html = "";
         if($params->get("facebookLikeButton")) {
+            
+            // Get locale code
+            if(!$params->get("dynamicLocale")) {
+                $this->fbLocale = $params->get("fbLocale");
+            } else {
+                $locales = $this->getButtonsLocales($this->locale); 
+                $this->fbLocale = JArrayHelper::getValue($locales, "facebook", "en_US");
+            }
             
             $faces = (!$params->get("facebookLikeFaces")) ? "false" : "true";
             
@@ -746,5 +890,227 @@ tweetmeme_source = "' . $params->get("twitterName") . '";
         }
         
         return $html;
+    }
+    
+    private function getBuffer($params, $url, $title){
+        
+        $html = "";
+        if($params->get("bufferButton")) {
+            
+            $html = '
+            <div class="itp-fshare-buffer">
+            <a href="http://bufferapp.com/add" class="buffer-add-button" data-text="' . $title . '" data-url="'.$url.'" data-count="'.$params->get("bufferType").'" data-via="'.$params->get("bufferTwitterName").'">Buffer</a><script type="text/javascript" src="http://static.bufferapp.com/js/button.js"></script>
+            </div>
+            ';
+        }
+        
+        return $html;
+    }
+    
+    private function getPinterest($params, $url, $title){
+        
+        $title = html_entity_decode($title,ENT_QUOTES, "UTF-8");
+        
+        $html = "";
+        if($params->get("pinterestButton")) {
+            
+            $html .= '<div class="itp-fshare-pinterest">';
+            
+            // Load the JS library
+            if($params->get("loadPinterestJsLib")) {
+                $html .= '<!-- Include ONCE for ALL buttons in the page -->
+<script type="text/javascript">
+(function() {
+    window.PinIt = window.PinIt || { loaded:false };
+    if (window.PinIt.loaded) return;
+    window.PinIt.loaded = true;
+    function async_load(){
+        var s = document.createElement("script");
+        s.type = "text/javascript";
+        s.async = true;
+        if (window.location.protocol == "https:")
+            s.src = "https://assets.pinterest.com/js/pinit.js";
+        else
+            s.src = "http://assets.pinterest.com/js/pinit.js";
+        var x = document.getElementsByTagName("script")[0];
+        x.parentNode.insertBefore(s, x);
+    }
+    if (window.attachEvent)
+        window.attachEvent("onload", async_load);
+    else
+        window.addEventListener("load", async_load, false);
+})();
+</script>
+';
+            }
+            
+$html .= '<!-- Customize and include for EACH button in the page -->
+<a href="http://pinterest.com/pin/create/button/?url=' . rawurlencode($url) . '&amp;description=' . rawurlencode($title) . '" class="pin-it-button" count-layout="'.$params->get("pinterestType").'">Pin It</a>';
+            $html .= '</div>';
+        }
+        
+        return $html;
+    }
+    
+     private function getButtonsLocales($locale) {
+        
+         // Default locales
+        $result = array(
+            "twitter"     => "en",
+        	"facebook"    => "en_US",
+        	"google"      => "en"
+        );
+        
+        // The locales map
+        $locales = array (
+            "en_US" => array(
+                "twitter"     => "en",
+            	"facebook"    => "en_US",
+            	"google"      => "en"
+            ),
+            "en_GB" => array(
+                "twitter"     => "en",
+            	"facebook"    => "en_GB",
+            	"google"      => "en_GB"
+            ),
+            "th_TH" => array(
+                "twitter"     => "th",
+            	"facebook"    => "th_TH",
+            	"google"      => "th"
+            ),
+            "ms_MY" => array(
+                "twitter"     => "msa",
+            	"facebook"    => "ms_MY",
+            	"google"      => "ms"
+            ),
+            "tr_TR" => array(
+                "twitter"     => "tr",
+            	"facebook"    => "tr_TR",
+            	"google"      => "tr"
+            ),
+            "hi_IN" => array(
+                "twitter"     => "hi",
+            	"facebook"    => "hi_IN",
+            	"google"      => "hi"
+            ),
+            "tl_PH" => array(
+                "twitter"     => "fil",
+            	"facebook"    => "tl_PH",
+            	"google"      => "fil"
+            ),
+            "zh_CN" => array(
+                "twitter"     => "zh-cn",
+            	"facebook"    => "zh_CN",
+            	"google"      => "zh"
+            ),
+            "ko_KR" => array(
+                "twitter"     => "ko",
+            	"facebook"    => "ko_KR",
+            	"google"      => "ko"
+            ),
+            "it_IT" => array(
+                "twitter"     => "it",
+            	"facebook"    => "it_IT",
+            	"google"      => "it"
+            ),
+            "da_DK" => array(
+                "twitter"     => "da",
+            	"facebook"    => "da_DK",
+            	"google"      => "da"
+            ),
+            "fr_FR" => array(
+                "twitter"     => "fr",
+            	"facebook"    => "fr_FR",
+            	"google"      => "fr"
+            ),
+            "pl_PL" => array(
+                "twitter"     => "pl",
+            	"facebook"    => "pl_PL",
+            	"google"      => "pl"
+            ),
+            "nl_NL" => array(
+                "twitter"     => "nl",
+            	"facebook"    => "nl_NL",
+            	"google"      => "nl"
+            ),
+            "id_ID" => array(
+                "twitter"     => "in",
+            	"facebook"    => "nl_NL",
+            	"google"      => "in"
+            ),
+            "hu_HU" => array(
+                "twitter"     => "hu",
+            	"facebook"    => "hu_HU",
+            	"google"      => "hu"
+            ),
+            "fi_FI" => array(
+                "twitter"     => "fi",
+            	"facebook"    => "fi_FI",
+            	"google"      => "fi"
+            ),
+            "es_ES" => array(
+                "twitter"     => "es",
+            	"facebook"    => "es_ES",
+            	"google"      => "es"
+            ),
+            "ja_JP" => array(
+                "twitter"     => "ja",
+            	"facebook"    => "ja_JP",
+            	"google"      => "ja"
+            ),
+            "nn_NO" => array(
+                "twitter"     => "no",
+            	"facebook"    => "nn_NO",
+            	"google"      => "no"
+            ),
+            "ru_RU" => array(
+                "twitter"     => "ru",
+            	"facebook"    => "ru_RU",
+            	"google"      => "ru"
+            ),
+            "pt_PT" => array(
+                "twitter"     => "pt",
+            	"facebook"    => "pt_PT",
+            	"google"      => "pt"
+            ),
+            "pt_BR" => array(
+                "twitter"     => "pt",
+            	"facebook"    => "pt_BR",
+            	"google"      => "pt"
+            ),
+            "sv_SE" => array(
+                "twitter"     => "sv",
+            	"facebook"    => "sv_SE",
+            	"google"      => "sv"
+            ),
+            "zh_HK" => array(
+                "twitter"     => "zh-tw",
+            	"facebook"    => "zh_HK",
+            	"google"      => "zh_HK"
+            ),
+            "zh_TW" => array(
+                "twitter"     => "zh-tw",
+            	"facebook"    => "zh_TW",
+            	"google"      => "zh_TW"
+            ),
+            "de_DE" => array(
+                "twitter"     => "de",
+            	"facebook"    => "de_DE",
+            	"google"      => "de"
+            ),
+            "bg_BG" => array(
+                "twitter"     => "en",
+            	"facebook"    => "bg_BG",
+            	"google"      => "bg"
+            ),
+            
+        );
+        
+        if(isset($locales[$locale])) {
+            $result = $locales[$locale];
+        }
+        
+        return $result;
+        
     }
 }
