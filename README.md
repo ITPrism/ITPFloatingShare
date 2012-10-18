@@ -1,11 +1,23 @@
 ITPFloatingShare Plugin for Joomla! 
 ==========================
-( Version 1.3 )
+( Version 1.4 )
 --------------------------
 
 
 Changelog
 ---------
+
+v1.4
+----
+* Now works with K2, VirtueMart, JEvents, EasyBlog, MyBlog, ZOO, JoomShopping, Hikashop
+* Added Google Share Button
+* Added some new Twitter languages
+* Added ablility to be used on 'https'-Domain (SSL)
+* Removed the Digg and ReTwittMe buttons. Those services do not work anymore.
+* Updated the code of buttons SumbpleUpon, Facebook, Pinterest, BufferApp.
+* Improved buttons displaying on the frontpage and category blog page. 
+* Added services that convert addresses into shorter ones
+* Improved language
 
 v1.3
 -----

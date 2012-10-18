@@ -1,7 +1,8 @@
 <?php
 /**
  * @package		 ITPrism Plugins
- * @subpackage	 Social
+ * @subpackage	 ITPFloatingShare
+ * @author       Todor Iliev
  * @copyright    Copyright (C) 2010 Todor Iliev <todor@itprism.com>. All rights reserved.
  * @license      http://www.gnu.org/copyleft/gpl.html GNU/GPL
  * ITPFloatingShare is free software. This version may have been modified pursuant
@@ -10,7 +11,7 @@
  * other free or open source software licenses.
  */
 
-// Check to ensure this file is included in Joomla!
+// no direct access
 defined('_JEXEC') or die;
 
 jimport('joomla.plugin.plugin');
@@ -26,8 +27,10 @@ class plgContentITPFloatingShare extends JPlugin {
     private $locale         = "en_US";
     private $fbLocale       = "en_US";
     private $plusLocale     = "en";
+    private $gshareLocale   = "en";
     private $twitterLocale  = "en";
     private $currentView    = "";
+    private $currentTask    = "";
     private $currentOption  = "";
     
     /**
@@ -41,22 +44,23 @@ class plgContentITPFloatingShare extends JPlugin {
     public function __construct(&$subject, $config = array()) {
         parent::__construct($subject, $config);
         
-        $app =& JFactory::getApplication();
-        /* @var $app JApplication */
+        $app = JFactory::getApplication();
+        /** @var $app JSite **/
 
         if($app->isAdmin()) {
             return;
         }
-        
+      
         // Get locale code automatically
         if($this->params->get("dynamicLocale", 0)) {
-            $lang = JFactory::getLanguage();
+            $lang   = JFactory::getLanguage();
             $locale = $lang->getTag();
             $this->locale = str_replace("-","_",$locale);
         }
         
-        $this->currentView    = JRequest::getCmd("view");
-        $this->currentOption  = JRequest::getCmd("option");
+        $this->currentView    = $app->input->get->getCmd("view");
+        $this->currentTask    = $app->input->get->getCmd("task");
+        $this->currentOption  = $app->input->get->getCmd("option");
         
     }
     
@@ -74,52 +78,35 @@ class plgContentITPFloatingShare extends JPlugin {
 
         if (!$article OR !isset($this->params)) { return; };      
         
-        $app =& JFactory::getApplication();
-        /** @var $app JApplication **/
+        $app = JFactory::getApplication();
+        /** @var $app JSite **/
 
         if($app->isAdmin()) {
             return;
         }
         
         $doc     = JFactory::getDocument();
-        /** @var $doc JDocumentHtml **/
-        $docType = $doc->getType();
+        /**  @var $doc JDocumentHtml **/
         
         // Check document type
+        $docType = $doc->getType();
         if(strcmp("html", $docType) != 0){
             return;
         }
-        
-        switch($this->currentOption) {
-            case "com_content":
-                if($this->isContentRestricted($article, $context)) {
-                    return;
-                }
-                break;    
-                
-             case "com_k2":
-                if($this->isK2Restricted($article, $context)) {
-                    return;
-                }
-                break;
-                
-            case "com_virtuemart":
-                if($this->isVirtuemartRestricted($article, $context)) {
-                    return;
-                }
-                break;
-                
-            default:
-                return;
-                break;   
+       
+        if($this->isRestricted($article, $context)) {
+        	return;
         }
         
         if($this->params->get("loadCss")) {
             $doc->addStyleSheet(JURI::root() . "plugins/content/itpfloatingshare/style.css");
         }
         
+        // Load language file
+        $this->loadLanguage();
+        
         // Generate content
-        $content      = $this->getContent($article, $params);
+		$content      = $this->getContent($article, $context);
         $position     = $this->params->get('position');
         
         switch($position){
@@ -136,44 +123,76 @@ class plgContentITPFloatingShare extends JPlugin {
                 break;
         }
         
-        return true;
+        return;
     }
     
-    private function genFloating($content) {
-        $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
-        
-        if($this->params->get("resizeProtection")) {
-            $js = '
-            window.addEvent( "domready" ,  function() {
-            
-                document.itpFloatingTimer = null;
-                document.itpFloatingStyle = null;
+    private function isRestricted($article, $context) {
+    	
+    	$result = false;
+    	
+    	switch($this->currentOption) {
+            case "com_content":
+            	
+            	// It's an implementation of "com_myblog"
+            	// I don't know why but $option contains "com_content" for a value
+            	// I hope it will be fixed in the future versions of "com_myblog"
+            	if(!strcmp($context, "com_myblog") == 0) {
+            		if($this->isContentRestricted($article, $context)) {
+	                    $result = true;
+	                }
+	                break;
+            	} 
+	                
+            case "com_myblog":
                 
-                window.addEvent("resize", function(){
-                	  
-                      window.clearTimeout(document.itpFloatingTimer);
-                      
-                      document.itpFloatingTimer = (function(){
-                          if (window.outerHeight < screen.availHeight) {
-                            document.id("itp-fshare").set("class", "itp-fshare-right");
-                            document.itpFloatingStyle = document.id("itp-fshare").get("style");
-                            document.id("itp-fshare").erase("style");
-                           } else {
-                             document.id("itp-fshare").set("class","itp-fshare-floating");
-                             document.id("itp-fshare").set("style", document.itpFloatingStyle);
-                           }
-                      }).delay(50);
-                      
-                });
+                if($this->isMyBlogRestricted($article, $context)) {
+                    $result = true;
+                }
                 
-             })';
-            
-            $doc     = JFactory::getDocument();
-        	/** @var $doc JDocumentHtml **/
-            $doc->addScriptDeclaration($js);
+                break;
+                    
+            case "com_k2":
+                if($this->isK2Restricted($article, $context)) {
+                    $result = true;
+                }
+                break;
+                
+            case "com_virtuemart":
+                if($this->isVirtuemartRestricted($article, $context)) {
+                    $result = true;
+                }
+                break;
+
+            case "com_jevents":
+                if($this->isJEventsRestricted($article, $context)) {
+                    $result = true;
+                }
+                break;
+
+            case "com_easyblog":
+                if($this->isEasyBlogRestricted($article, $context)) {
+                    $result = true;
+                }
+                break;
+                
+            case "com_vipportfolio":
+                if($this->isVipPortfolioRestricted($article, $context)) {
+                    $result = true;
+                }
+                break;
+                
+            case "com_zoo":
+                if($this->isZooRestricted($article, $context)) {
+                    $result = true;
+                }
+                break;    
+            default:
+                $result = true;
+                break;   
         }
         
-        return $html;
+        return $result;
+        
     }
     
 	/**
@@ -222,6 +241,7 @@ class plgContentITPFloatingShare extends JPlugin {
             $article->id        = JArrayHelper::getValue($articleData,'id');
             $article->catid     = JArrayHelper::getValue($articleData,'catid');
             $article->title     = JArrayHelper::getValue($articleData,'title');
+            $article->images    = JArrayHelper::getValue($articleData, 'images');
             $article->slug      = JArrayHelper::getValue($articleData, 'slug');
             $article->catslug   = JArrayHelper::getValue($articleData,'catslug');
         }
@@ -230,6 +250,7 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;            
         }
         
+        // Exclude articles
         $excludeArticles = $this->params->get('excludeArticles');
         if(!empty($excludeArticles)){
             $excludeArticles = explode(',', $excludeArticles);
@@ -263,20 +284,265 @@ class plgContentITPFloatingShare extends JPlugin {
         return false;
     }
     
+	/**
+     * 
+     * This method does verification for K2 restrictions
+     * @param jIcalEventRepeat $article
+     * @param string $context
+     */
     private function isK2Restricted(&$article, $context) {
         
         // Check for currect context
         if(strpos($context, "com_k2") === false) {
            return true;
         }
+        
+        if($article instanceof TableK2Category){
+            return true;
+        }
+        
+        $displayInArticles     = $this->params->get('k2DisplayInArticles', 0);
+        if(!$displayInArticles AND (strcmp("item", $this->currentView) == 0)){
+            return true;
+        }
+        
+        $displayInItemlist     = $this->params->get('k2DisplayInItemlist', 0);
+        if(!$displayInItemlist AND (strcmp("itemlist", $this->currentView) == 0)){
+            return true;
+        }
+        
+        return false;
     }
     
+    /**
+     * 
+     * Do verifications for JEvent extension
+     * @param jIcalEventRepeat $article
+     * @param string $context
+     */
+    private function isJEventsRestricted(&$article, $context) {
+        
+        // Display buttons only in the description
+        if (!is_a($article, "jIcalEventRepeat")) { 
+            return true; 
+        };
+        
+        // Check for currect context
+        if(strpos($context, "com_jevents") === false) {
+           return true;
+        }
+        
+        $displayInEvents     = $this->params->get('jeDisplayInEvents', 0);
+        if(!$displayInEvents AND (strcmp("icalrepeat.detail", $this->currentTask) == 0)){
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 
+     * This method does verification for VirtueMart restrictions
+     * @param stdClass $article
+     * @param string $context
+     */
     private function isVirtuemartRestricted(&$article, $context) {
             
         // Check for currect context
         if(strpos($context, "com_virtuemart") === false) {
            return true;
         }
+        
+        // Check categories
+        if(strcmp("category", $this->currentView) == 0){
+            return true;
+        }
+        
+        // Display content only in the view "productdetails"
+        $displayInDetails     = $this->params->get('vmDisplayInDetails', 0);
+        if(!$displayInDetails AND (strcmp("productdetails", $this->currentView) == 0)){
+            return true;
+        }
+        
+        return false;
+    }
+    
+	/**
+     * 
+     * It's a method that verify restriction for the component "com_myblog"
+     * @param object $article
+     * @param string $context
+     */
+	private function isMyBlogRestricted(&$article, $context) {
+
+        // Check for currect context
+        if(strpos($context, "myblog") === false) {
+           return true;
+        }
+        
+        if(!$this->params->get('mbDisplay', 0)){
+            return true;
+        }
+        
+        return false;
+    }
+    
+	/**
+     * 
+     * It's a method that verify restriction for the component "com_myblog"
+     * @param object $article
+     * @param string $context
+     */
+	private function isVipPortfolioRestricted(&$article, $context) {
+
+        // Check for currect context
+        if(strpos($context, "com_vipportfolio") === false) {
+           return true;
+        }
+        
+        return false;
+    }
+    
+	/**
+     * 
+     * It's a method that verify restriction for the component "com_zoo"
+     * @param object $article
+     * @param string $context
+     */
+	private function isZooRestricted(&$article, $context) {
+	    
+        // Check for currect context
+        if(false === strpos($context, "com_zoo")) {
+           return true;
+        }
+        
+	    // Check for valid view or task
+	    // I have check for task because if the user comes from view category, the current view is "null" and the current task is "item"
+        if( (strcmp("item", $this->currentView) != 0 ) AND (strcmp("item", $this->currentTask) != 0 )){
+            return true;
+        }
+        
+        // A little hack used to prevent multiple displaying of buttons, becaues
+        // if there is more than one textares the buttons will be displayed in everyone.
+        static $numbers = 0;
+        if($numbers == 1) {
+            return true;
+        }
+        $numbers = 1;
+        
+        $itemData = $this->getZooItemData($article);
+        
+        return false;
+    }
+    
+    /**
+     * 
+     * Get data of ZOO item and set it to $article object
+     * @param object $article
+     */
+    private function getZooItemData(&$article) {
+        
+        $article->image_intro = "";
+        
+        $url       = JURI::getInstance();
+        
+        // Get the ZOO URI
+        $zooURI    = $url->getPath();
+        if($url->getQuery()) {
+            $zooURI .= "?".$url->getQuery();
+        }
+        $article->link = $zooURI;
+        
+        // Get alias
+        $zooURL    = $url->toString();
+        $zooURL    = parse_url($zooURL); 
+        $path      = JArrayHelper::getValue($zooURL, "path");
+        $urlParts  = explode("/", $path);
+        $itemAlias = array_pop($urlParts);
+        
+        if(!empty($itemAlias)) {
+            $db = JFactory::getDbo();
+            /** @var $db JDatabaseMySQLi **/
+            
+            $qiery = $db->getQuery(true);
+               
+            $qiery
+                ->select("id, name, elements, params")
+                ->from("#__zoo_item")
+                ->where("alias=".$db->quote($itemAlias));
+                  
+            $db->setQuery($qiery);
+            $result = $db->loadObject();
+            if(!empty($result)) {
+                $result->elements = json_decode($result->elements, true);
+                $result->params   = json_decode($result->params, true);
+                $article->id      = (int)$result->id;
+                
+                // Get title
+                $article->title  = JString::trim( JArrayHelper::getValue($result->params, "metadata.title", "") );
+                if(!$article->title) {
+                    $article->title  = JString::trim( JArrayHelper::getValue($result, "name", "") );
+                }
+                
+                // Get image
+                foreach($result->elements as $element) {
+                    if(isset($element["file"])) {
+                        if(!empty($element["file"])) {
+                            $pattern = "/(.png|.jpg|.gif)/i";
+                            if(preg_match($pattern, $element["file"])) {
+                                $article->image_intro = $element["file"];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 
+     * It's a method that verify restriction for the component "com_easyblog"
+     * @param object $article
+     * @param string $context
+     */
+	private function isEasyBlogRestricted(&$article, $context) {
+        $allowedViews = array("categories", "entry", "latest", "tags");   
+        // Check for currect context
+        if(strpos($context, "easyblog") === false) {
+           return true;
+        }
+        
+        // Only put buttons in allowed views
+        if(!in_array($this->currentView, $allowedViews)) {
+        	return true;
+        }
+        
+   		// Verify the option for displaying in view "categories"
+        $displayInCategories     = $this->params->get('ebDisplayInCategories', 0);
+        if(!$displayInCategories AND (strcmp("categories", $this->currentView) == 0)){
+            return true;
+        }
+        
+   		// Verify the option for displaying in view "latest"
+        $displayInLatest     = $this->params->get('ebDisplayInLatest', 0);
+        if(!$displayInLatest AND (strcmp("latest", $this->currentView) == 0)){
+            return true;
+        }
+        
+		// Verify the option for displaying in view "entry"
+        $displayInEntry     = $this->params->get('ebDisplayInEntry', 0);
+        if(!$displayInEntry AND (strcmp("entry", $this->currentView) == 0)){
+            return true;
+        }
+        
+	    // Verify the option for displaying in view "tags"
+        $displayInTags     = $this->params->get('ebDisplayInTags', 0);
+        if(!$displayInTags AND (strcmp("tags", $this->currentView) == 0)){
+            return true;
+        }
+        
+        return false;
     }
     
     /**
@@ -285,47 +551,83 @@ class plgContentITPFloatingShare extends JPlugin {
      * @param   object      The article params
      * @return  string      Returns html code or empty string.
      */
-    private function getContent(&$article, &$params){
+    private function getContent(&$article, $context){
         
-        $url  = $this->getUrl($article);
-        $title= $this->getTitle($article);
+        $url   = $this->getUrl($article, $context);
+        $title = $this->getTitle($article, $context);
+        $image = $this->getImage($article, $context);
+        
+    	// Convert the url to short one
+        if($this->params->get("shortener_service")) {
+            $url = $this->getShortUrl($url);
+        }
         
         $html   = "";
         $html .= $this->getTwitter($this->params, $url, $title);
-        $html .= $this->getDigg($this->params, $url, $title);
-        $html .= $this->getStumbpleUpon($this->params, $url, $title);
-        $html .= $this->getLinkedIn($this->params, $url, $title);
-        $html .= $this->getTumblr($this->params, $url, $title);
-        $html .= $this->getBuffer($this->params, $url, $title);
-        $html .= $this->getPinterest($this->params, $url, $title);
+        $html .= $this->getStumbpleUpon($this->params, $url);
+        $html .= $this->getLinkedIn($this->params, $url);
+        $html .= $this->getBuffer($this->params, $url, $title, $image);
+        $html .= $this->getPinterest($this->params, $url, $title, $image);
         $html .= $this->getReddit($this->params, $url, $title);
-        $html .= $this->getReTweetMeMe($this->params, $url, $title);
-
-        $html .= $this->getFacebookLike($this->params, $url, $title);
-        $html .= $this->getGooglePlusOne($this->params, $url, $title);
+        $html .= $this->getTumblr($this->params, $url);
+        $html .= $this->getFacebookLike($this->params, $url);
+        $html .= $this->getGooglePlusOne($this->params, $url);
+        $html .= $this->getGoogleShare($this->params, $url);
         
-        // Gets extra buttons
+        // Get extra buttons
         $html   .= $this->getExtraButtons($this->params, $url, $title);
         
         return $html;
     
     }
     
-    private function getUrl(&$article) {
+    private function getUrl(&$article, $context) {
         
         $url = JURI::getInstance();
+        $uri = "";
         $domain= $url->getScheme() ."://" . $url->getHost();
         
         switch($this->currentOption) {
             case "com_content":
-                $uri = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug), false);
+            	
+            	// It's an implementation of "com_myblog"
+            	// I don't know why but $option contains "com_content" for a value
+            	// I hope it will be fixed in the future versions of "com_myblog"
+            	if(strcmp($context, "com_myblog") != 0) {
+                	$uri = JRoute::_(ContentHelperRoute::getArticleRoute($article->slug, $article->catslug), false);
+                	break;
+            	}
+            	
+            case "com_myblog":
+                $uri = $article->permalink;
                 break;    
+                
                 
             case "com_k2":
                 $uri = $article->link;
                 break;
                 
             case "com_virtuemart":
+                $uri = $article->link;
+                break;
+                
+            case "com_jevents":
+                // Display buttons only in the description
+                if (is_a($article, "jIcalEventRepeat")) { 
+                    $uri    = $url->getPath();
+                };
+                
+                break;
+
+            case "com_easyblog":
+            	$uri	= EasyBlogRouter::getRoutedURL( 'index.php?option=com_easyblog&view=entry&id=' . $article->id , false , false );
+                break;
+
+            case "com_vipportfolio":
+                $uri = JRoute::_($article->link, false);
+                break;
+                
+            case "com_zoo":
                 $uri = $article->link;
                 break;
                 
@@ -338,20 +640,57 @@ class plgContentITPFloatingShare extends JPlugin {
         
     }
     
-    private function getTitle(&$article) {
+    private function getTitle(&$article, $context) {
+        
+        $title = "";
         
         switch($this->currentOption) {
             case "com_content":
-                $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
+            	
+            	// It's an implementation of "com_myblog"
+            	// I don't know why but $option contains "com_content" for a value
+            	// I hope it will be fixed in the future versions of "com_myblog"
+            	if(strcmp($context, "com_myblog") != 0) {
+            		$title= $article->title;
+            		break;
+            	}
+                
+            case "com_myblog":
+                $title= $article->title;
                 break;    
                 
             case "com_k2":
-                $title= htmlentities($article->title, ENT_QUOTES, "UTF-8");
+                $title= $article->title;
                 break;
                 
             case "com_virtuemart":
                 $title = (!empty($article->custom_title)) ? $article->custom_title : $article->product_name;
-                $title= htmlentities($title, ENT_QUOTES, "UTF-8");
+                break;
+                
+            case "com_jevents":
+                // Display buttons only in the description
+                if (is_a($article, "jIcalEventRepeat")) { 
+                    
+                    $title    = JString::trim($article->title());
+                    if(!$title) {
+                        $doc     = JFactory::getDocument();
+                        /**  @var $doc JDocumentHtml **/
+                        $title    =  $doc->getTitle();
+                    }
+                };
+                
+                break;   
+
+            case "com_easyblog":
+                $title = $article->title;
+                break;
+           
+            case "com_vipportfolio":
+                $title = $article->title;
+                break;
+
+            case "com_zoo":
+                $title = $article->title;
                 break;
                 
             default:
@@ -363,6 +702,122 @@ class plgContentITPFloatingShare extends JPlugin {
         
     }
     
+    private function getImage($article, $context) {
+        
+    	$result = false;
+    	
+    	switch($this->currentOption) {
+            case "com_content":
+            	
+            	// It's an implementation of "com_myblog"
+            	// I don't know why but $option contains "com_content" for a value
+            	// I hope it will be fixed in the future versions of "com_myblog"
+            	if(strcmp($context, "com_myblog") != 0) {
+            	    
+            		if(!empty($article->images)) {
+            		    $images = json_decode($article->images);
+            		    if(isset($images->image_intro)) {
+            		        $result = JURI::root().$images->image_intro;
+            		    }
+            		}
+            		 
+	                break;
+            	} 
+            	
+        	case "com_myblog":
+        	    // Using contect because the context show us it is com_myblog
+        	    // $this->currentOption contains value "com_content" 
+        	    $result = $this->findImage($context, $article);
+        	    break;
+
+            case "com_k2":
+    	        if(!empty($article->imageSmall)) {
+    		        $result = JURI::root().$article->imageSmall;
+        		}
+                break;
+                
+            case "com_virtuemart":
+                $result = $this->findImage($this->currentOption, $article);
+                break;
+            
+            case "com_easyblog":
+                $result = $this->findImage($this->currentOption, $article);
+                break;
+                
+            case "com_vipportfolio":
+                $result = JURI::root().$article->image_intro;
+                break;
+
+            case "com_zoo":
+                $result = JURI::root().$article->image_intro;
+                break;
+            default:
+                $result = "";
+                break;   
+        }
+        
+        return $result;
+        
+    }
+    
+    private function findImage($option, $article) {
+        
+        $matches = array();
+        $pattern = '/src="([^"]*)"/i'; 
+        $fileURL = "";
+        
+        $db = JFactory::getDbo();
+        /** @var $db JDatabaseMySQLi **/
+        
+        $qiery = $db->getQuery(true);
+        
+        switch($option) {
+            
+            case "com_virtuemart":
+               
+                $qiery
+                    ->select("#__virtuemart_medias.file_url")
+                    ->from("#__virtuemart_medias")
+                    ->join("RIGHT", "#__virtuemart_product_medias ON #__virtuemart_product_medias.virtuemart_media_id = #__virtuemart_medias.virtuemart_media_id")
+                    ->where("#__virtuemart_product_medias.virtuemart_product_id=" . (int)$article->id)
+                    ->where("#__virtuemart_medias.file_is_product_image=1");
+                  
+                $db->setQuery($qiery, 0, 1);
+                $fileURL = $db->loadResult();
+                if(!empty($fileURL)) {
+                    $fileURL = JURI::base().$fileURL;
+                }
+                
+                break;
+
+            case "com_myblog":
+                preg_match( $pattern, $article->fulltext, $matches ) ;
+                if(isset($matches[1])) {
+                    $fileURL = JArrayHelper::getValue($matches, 1, "");
+                }
+                break;
+                
+            case "com_easyblog":
+                preg_match( $pattern, $article->content, $matches ) ;
+                if(isset($matches[1])) {
+                    $fileURL = JURI::base().JArrayHelper::getValue($matches, 1, "");
+                }
+                break;
+                
+            case "com_zoo":
+                break;
+            
+            case "com_vipportfolio":
+                break;
+                
+            default:
+                
+                break;   
+        }
+        
+        return $fileURL;
+    }
+    
     /**
      * 
      * Load an information about article, if missing, on the view 'category' and 'featured'
@@ -371,6 +826,7 @@ class plgContentITPFloatingShare extends JPlugin {
     private function getArticle(&$article) {
         
         $db = JFactory::getDbo();
+        /** @var $db JDatabaseMySQLi **/
         
         $query = "
             SELECT 
@@ -378,7 +834,9 @@ class plgContentITPFloatingShare extends JPlugin {
                 `#__content`.`catid`,
                 `#__content`.`alias`,
                 `#__content`.`title`,
+                `#__content`.`images`,
                 `#__categories`.`alias` as category_alias
+                
             FROM
                 `#__content`
             INNER JOIN
@@ -386,26 +844,63 @@ class plgContentITPFloatingShare extends JPlugin {
             ON
                 `#__content`.`catid`=`#__categories`.`id`
             WHERE
-                `#__content`.`introtext` = " . $db->quote($article->text); 
+                `#__content`.`introtext` SOUNDS LIKE " . $db->quote($article->text); 
         
         $db->setQuery($query);
-        
-        try {
-            $result = $db->loadAssoc();
-        } catch(Exception $e) {
-            JError::raiseError(500, "System error!", $e->getMessage());
-        }
+        $result = $db->loadAssoc();
         
         if(!empty($result)) {
-            $result['slug'] = $result['alias'] ? ($result['id'].':'.$result['alias']) : $result['id'];
-            $result['catslug'] = $result['category_alias'] ? ($result['catid'].':'.$result['category_alias']) : $result['catid'];
+            $result['slug']     = $result['alias'] ? $result['id'].':'.$result['alias'] : $result['id'];
+            $result['catslug']  = $result['category_alias'] ? $result['catid'].':'.$result['category_alias'] : $result['catid'];
+        } else {
+            $result = array();
         }
         
         return $result;
     }
     
+	/**
+     * A method that make a long url to short url
+     * 
+     * @param string $link
+     * @param array $params
+     * @return string
+     */
+    private function getShortUrl($link){
+        
+        JLoader::register("ItpFloatingSharePluginShortUrl", dirname(__FILE__).DIRECTORY_SEPARATOR."shorturl.php");
+        $options = array(
+            "login"     => $this->params->get("shortener_login"),
+            "api_key"   => $this->params->get("shortener_api_key"),
+            "service"   => $this->params->get("shortener_service"),
+        );
+        $shortUrl 	= new ItpFloatingSharePluginShortUrl($link, $options);
+        $shortLink  = $shortUrl->getUrl();
+        
+        if(!$shortLink) {
+        	// Add logger
+            JLog::addLogger(
+                array(
+                    'text_file' => 'error.php',
+                 )
+            );
+            
+            JLog::add($shortUrl->getError(), JLog::ERROR);
+        }
+        
+        return $shortLink;
+            
+    }
+    
     /**
-     * Generate a code for the extra buttons
+     * Generate a code for the extra buttons. 
+     * Is also replace indicators {URL} and {TITLE} with that of the article.
+     * 
+     * @param string $title Article Title
+     * @param string $url   Article URL
+     * @param array $params Plugin parameters
+     * 
+     * @return string
      */
     private function getExtraButtons($params, $url, $title) {
         
@@ -431,60 +926,66 @@ class plgContentITPFloatingShare extends JPlugin {
             
             // Get locale code
             if(!$params->get("dynamicLocale")) {
-                $this->twitterLocale = $params->get("twitterLanguage");
+                $this->twitterLocale = $params->get("twitterLanguage", "en");
             } else {
-                $locales = $this->getButtonsLocales($this->locale); 
+                $locales             = $this->getButtonsLocales($this->locale); 
                 $this->twitterLocale = JArrayHelper::getValue($locales, "twitter", "en");
             }
             
-            $html .= '
-            <div class="itp-fshare-tw">
-            	<a href="https://twitter.com/share" class="twitter-share-button" data-url="' . $url . '" data-text="' . $title . '" data-via="' . $params->get("twitterName") . '" data-lang="' . $this->twitterLocale . '" data-size="' . $params->get("twitterSize") . '" data-related="' . $params->get("twitterRecommend") . '" data-hashtags="' . $params->get("twitterHashtag") . '" data-count="' . $params->get("twitterCounter") . '">Tweet</a>
-            	<script type="text/javascript">!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
-            </div>
-            ';
+            $html = '
+             	<div class="itp-fshare-tw">
+                	<a href="https://twitter.com/share" class="twitter-share-button" data-url="' . $url . '" data-text="' . $title . '" data-via="' . $params->get("twitterName") . '" data-lang="' . $this->twitterLocale . '" data-size="' . $params->get("twitterSize") . '" data-related="' . $params->get("twitterRecommend") . '" data-hashtags="' . $params->get("twitterHashtag") . '" data-count="' . $params->get("twitterCounter") . '">Tweet</a>';
+            
+            if($params->get("load_twitter_library", 1)) {
+                $html .= '<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>';
+            }
+            
+            $html .='</div>';
         }
-        
+         
         return $html;
     }
     
-    /**
-     * Generate the Google +1 button
-     * 
-     * @param object $params
-     * @param string $url
-     * @param string $title
-     */
-    private function getGooglePlusOne($params, $url, $title){
+    private function getGooglePlusOne($params, $url){
         
         $html = "";
         if($params->get("plusButton")) {
             
-            $language = "";
-        
             // Get locale code
             if(!$params->get("dynamicLocale")) {
-                $this->plusLocale = $params->get("plusLocale");
+                $this->plusLocale = $params->get("plusLocale", "en");
             } else {
                 $locales = $this->getButtonsLocales($this->locale); 
                 $this->plusLocale = JArrayHelper::getValue($locales, "google", "en");
             }
-            
-            $language = " {lang: '" . $this->plusLocale . "'};";
             
             $html .= '<div class="itp-fshare-gone">';
             
             switch($params->get("plusRenderer")) {
                 
                 case 1:
-                    $html .= $this->genGooglePlus($params, $url, $language);
+                    $html .= $this->genGooglePlus($params, $url);
                     break;
                     
                 default:
-                    $html .= $this->genGooglePlusHTML5($params, $url, $language);
+                    $html .= $this->genGooglePlusHTML5($params, $url);
                     break;
             }
             
+        // Load the JavaScript asynchroning
+		if($params->get("loadGoogleJsLib")) {
+  
+            $html .= '<script>';
+            $html .= ' window.___gcfg = {lang: "' . $this->plusLocale . '"};';
+            
+            $html .= '
+              (function() {
+                var po = document.createElement("script"); po.type = "text/javascript"; po.async = true;
+                po.src = "https://apis.google.com/js/plusone.js";
+                var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(po, s);
+              })();
+            </script>';
+		}
           
             $html .= '</div>';
         }
@@ -498,9 +999,8 @@ class plgContentITPFloatingShare extends JPlugin {
      * 
      * @param array $params
      * @param string $url
-     * @param string $language
      */
-    private function genGooglePlus($params, $url, $language) {
+    private function genGooglePlus($params, $url) {
         
         $annotation = "";
         if($params->get("plusAnnotation")) {
@@ -509,24 +1009,6 @@ class plgContentITPFloatingShare extends JPlugin {
         
         $html = '<g:plusone size="' . $params->get("plusType") . '" ' . $annotation . ' href="' . $url . '"></g:plusone>';
 
-        
-        // Load the JavaScript asynchroning
-		if($params->get("loadGooglePlusJsLib")) {
-  
-        $html .= '<script type="text/javascript">';
-        if($language) {
-           $html .= ' window.___gcfg = '.$language;
-        }
-        
-        $html .= '
-  (function() {
-    var po = document.createElement("script"); po.type = "text/javascript"; po.async = true;
-    po.src = "https://apis.google.com/js/plusone.js";
-    var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(po, s);
-  })();
-</script>';
-				}
-				
         return $html;
     }
     
@@ -536,9 +1018,8 @@ class plgContentITPFloatingShare extends JPlugin {
      * 
      * @param array $params
      * @param string $url
-     * @param string $language
      */
-    private function genGooglePlusHTML5($params, $url, $language) {
+    private function genGooglePlusHTML5($params, $url) {
         
         $annotation = "";
         if($params->get("plusAnnotation")) {
@@ -546,43 +1027,28 @@ class plgContentITPFloatingShare extends JPlugin {
         }
         
         $html = '<div class="g-plusone" data-size="' . $params->get("plusType") . '" ' . $annotation . ' data-href="' . $url . '"></div>';
-
-        // Load the JavaScript asynchroning
-		if($params->get("loadGooglePlusJsLib")) {
-      
-            $html .= '<script type="text/javascript">';
-            if($language) {
-               $html .= ' window.___gcfg = '.$language;
-            }
-            
-            $html .= '
-              (function() {
-                var po = document.createElement("script"); po.type = "text/javascript"; po.async = true;
-                po.src = "https://apis.google.com/js/plusone.js";
-                var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(po, s);
-              })();
-            </script>';
-		}
     				
         return $html;
     }
     
-        
-    private function getFacebookLike($params, $url, $title){
+    
+    private function getFacebookLike($params, $url){
         
         $html = "";
         if($params->get("facebookLikeButton")) {
             
             // Get locale code
             if(!$params->get("dynamicLocale")) {
-                $this->fbLocale = $params->get("fbLocale");
+                $this->fbLocale = $params->get("fbLocale", "en_US");
             } else {
                 $locales = $this->getButtonsLocales($this->locale); 
                 $this->fbLocale = JArrayHelper::getValue($locales, "facebook", "en_US");
             }
             
+            // Faces
             $faces = (!$params->get("facebookLikeFaces")) ? "false" : "true";
             
+            // Layout Styles
             $layout = $params->get("facebookLikeType", "button_count");
             if(strcmp("box_count", $layout)==0){
                 $height = "80";
@@ -590,7 +1056,8 @@ class plgContentITPFloatingShare extends JPlugin {
                 $height = "25";
             }
             
-            $html .= '<div class="itp-fshare-fbl">';
+            // Generate code
+            $html = '<div class="itp-fshare-fbl">';
             
             switch($params->get("facebookLikeRenderer")) {
                 
@@ -616,7 +1083,8 @@ class plgContentITPFloatingShare extends JPlugin {
     private function genFacebookLikeIframe($params, $url, $layout, $faces, $height) {
         
         $html = '
-            <iframe src="http://www.facebook.com/plugins/like.php?';
+        	<div class="itp-fshare-fbl">
+            <iframe src="//www.facebook.com/plugins/like.php?';
             
             if($params->get("facebookLikeAppId")) {
                 $html .= 'app_id=' . $params->get("facebookLikeAppId"). '&amp;';
@@ -630,6 +1098,7 @@ class plgContentITPFloatingShare extends JPlugin {
                 $html .= "&amp;appId=" . $params->get("facebookLikeAppId");
             }
             $html .= '" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:' . $params->get("facebookLikeWidth", "450") . 'px; height:' . $height . 'px;" allowTransparency="true"></iframe>
+            </div>
         ';
             
         return $html;
@@ -637,18 +1106,27 @@ class plgContentITPFloatingShare extends JPlugin {
     
     private function genFacebookLikeXfbml($params, $url, $layout, $faces, $height) {
         
-       $html = "";
+        $html = "";
                 
-       if($params->get("facebookRootDiv",1)) {
+        if($params->get("facebookRootDiv",1)) {
             $html .= '<div id="fb-root"></div>';
-       }
+        }
         
-       if($params->get("facebookLoadJsLib", 1)) {
-            $html .= '<script type="text/javascript" src="http://connect.facebook.net/' . $this->fbLocale . '/all.js#xfbml=1';
-            if($params->get("facebookLikeAppId")){
-                $html .= '&amp;appId=' . $params->get("facebookLikeAppId"); 
-            }
-            $html .= '"></script>';
+    if($params->get("facebookLoadJsLib", 1)) {
+           $appId = "";
+           if($params->get("facebookLikeAppId")){
+               $appId = '&amp;appId=' . $params->get("facebookLikeAppId"); 
+           }
+            
+           $html .= ' 
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/' . $this->fbLocale . '/all.js#xfbml=1'.$appId.'";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, \'script\', \'facebook-jssdk\'));</script>';
+           
         }
         
         $html .= '
@@ -672,28 +1150,29 @@ class plgContentITPFloatingShare extends JPlugin {
     
     private function genFacebookLikeHtml5($params, $url, $layout, $faces, $height) {
         
-       $html = '';
+        $html = '';
                 
-       if($params->get("facebookRootDiv",1)) {
-           $html .= '<div id="fb-root"></div>';
-       }
+        if($params->get("facebookRootDiv",1)) {
+            $html .= '<div id="fb-root"></div>';
+        }
                 
-       if($params->get("facebookLoadJsLib", 1)) {
-                   
-       $html .='
-<script type="text/javascript">(function(d, s, id) {
+        if($params->get("facebookLoadJsLib", 1)) {
+           $appId = "";
+           if($params->get("facebookLikeAppId")){
+                $appId = '&amp;appId=' . $params->get("facebookLikeAppId"); 
+            }
+                
+           $html .= ' 
+<script>(function(d, s, id) {
   var js, fjs = d.getElementsByTagName(s)[0];
   if (d.getElementById(id)) return;
   js = d.createElement(s); js.id = id;
-  js.src = "//connect.facebook.net/' . $this->fbLocale . '/all.js#xfbml=1';
-               if($params->get("facebookLikeAppId")){
-                    $html .= '&amp;appId=' . $params->get("facebookLikeAppId"); 
-                }
-        $html .= '"
+  js.src = "//connect.facebook.net/' . $this->fbLocale . '/all.js#xfbml=1'.$appId.'";
   fjs.parentNode.insertBefore(js, fjs);
-}(document, "script", "facebook-jssdk"));</script>
-                   ';
-                }
+}(document, \'script\', \'facebook-jssdk\'));</script>';
+               
+        }
+        
         $html .= '
             <div 
             class="fb-like" 
@@ -705,7 +1184,6 @@ class plgContentITPFloatingShare extends JPlugin {
             data-colorscheme="' . $params->get("facebookLikeColor","light") . '" 
             data-action="' . $params->get("facebookLikeAction",'like') . '"';
                 
-                
         if($params->get("facebookLikeFont")){
             $html .= ' data-font="' . $params->get("facebookLikeFont") . '" ';
         }
@@ -716,81 +1194,22 @@ class plgContentITPFloatingShare extends JPlugin {
         
     }
     
-    private function getDigg($params, $url, $title){
-        $title = html_entity_decode($title,ENT_QUOTES, "UTF-8");
-        
-        $html = "";
-        if($params->get("diggButton")) {
-            
-            $html .= '<div class="itp-fshare-digg">';
-            
-            // Load the JS library
-            if($params->get("loadDiggJsLib")) {
-                $html .= '<script type="text/javascript">
-(function() {
-var s = document.createElement(\'SCRIPT\'), s1 = document.getElementsByTagName(\'SCRIPT\')[0];
-s.type = \'text/javascript\';
-s.async = true;
-s.src = \'http://widgets.digg.com/buttons.js\';
-s1.parentNode.insertBefore(s, s1);
-})();
-</script>';
-            }
-            
-$html .= '<a 
-class="DiggThisButton '.$params->get("diggType","DiggCompact") . '"
-href="http://digg.com/submit?url=' . rawurlencode($url) . '&amp;title=' . rawurlencode($title) . '" rev="'.$params->get("diggTopic").'" >
-</a>';
-            $html .= '</div>';
-        }
-        
-        return $html;
-    }
-    
-    private function getStumbpleUpon($params, $url, $title){
-        
-        $html = "";
-        if($params->get("stumbleButton")) {
-            
-            $html = '
-            <div class="itp-fshare-su">
-            <script src="http://www.stumbleupon.com/hostedbadge.php?s=' . $params->get("stumbleType",1). '&amp;r=' . rawurlencode($url) . '"></script>
-            </div>
-            ';
-        }
-        
-        return $html;
-    }
-    
-    private function getLinkedIn($params, $url, $title){
+    private function getLinkedIn($params, $url){
         
         $html = "";
         if($params->get("linkedInButton")) {
             
             $html = '
-            <div class="itp-fshare-lin">
-            <script type="text/javascript" src="http://platform.linkedin.com/in.js"></script><script type="in/share" data-url="' . $url . '" data-counter="' . $params->get("linkedInType",'right'). '"></script>
+            <div class="itp-fshare-lin">';
+            
+            if($params->get("load_linkedin_library", 1)) {
+                $html .= '<script src="//platform.linkedin.com/in.js"></script>';
+            }
+            
+            $html .= '<script type="IN/Share" data-url="' . $url . '" data-counter="' . $params->get("linkedInType", 'right'). '"></script>
             </div>
             ';
-        }
-        
-        return $html;
-    }
-    
-    private function getReTweetMeMe($params, $url, $title){
-        
-        $html = "";
-        if($params->get("retweetmeButton")) {
-            
-            $html = '
-            <div class="itp-fshare-retweetme">
-            <script type="text/javascript">
-tweetmeme_url = "' . $url . '";
-tweetmeme_style = "' . $params->get("retweetmeType") . '";
-tweetmeme_source = "' . $params->get("twitterName") . '";
-</script>
-<script type="text/javascript" src="http://tweetmeme.com/i/scripts/button.js"></script>
-            </div>';
+
         }
         
         return $html;
@@ -804,10 +1223,10 @@ tweetmeme_source = "' . $params->get("twitterName") . '";
             $html .= '<div class="itp-fshare-reddit">';
             $redditType = $params->get("redditType");
             
-            $jsButtons = array(1,2,3);
+            $jsButtons = range(1, 9);
             
-            if(in_array($redditType,$jsButtons) ) {
-                $html .='<script type="text/javascript">
+            if(in_array($redditType, $jsButtons) ) {
+                $html .='<script>
   reddit_url = "'. $url . '";
   reddit_title = "'.$title.'";
   reddit_bgcolor = "'.$params->get("redditBgColor").'";
@@ -815,89 +1234,88 @@ tweetmeme_source = "' . $params->get("twitterName") . '";
   reddit_newwindow = "'.$params->get("redditNewTab").'";
 </script>';
             }
-            switch($redditType) {
+                switch($redditType) {
+                    
+                    case 1:
+                        $html .='<script src="//www.reddit.com/static/button/button1.js"></script>';
+                        break;
+                    case 2:
+                        $html .='<script src="//www.reddit.com/static/button/button2.js"></script>';
+                        break;
+                    case 3:
+                        $html .='<script src="//www.reddit.com/static/button/button3.js"></script>';
+                        break;
+                    case 4:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=0"></script>';
+                        break;
+                    case 5:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=1"></script>';
+                        break;
+                    case 6:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=2"></script>';
+                        break;
+                    case 7:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=3"></script>';
+                        break;
+                    case 8:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=4"></script>';
+                        break;
+                    case 9:
+                        $html .='<script src="//www.reddit.com/buttonlite.js?i=5"></script>';
+                        break;
+                    case 10:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit6.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;
+                    case 11:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit1.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 12:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit2.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 13:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit3.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 14:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit4.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 15:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit5.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 16:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit8.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 17:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit9.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 18:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit10.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 19:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit11.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 20:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit12.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 21:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit13.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                    case 22:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit14.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;   
+                                        
+                    default:
+                        $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url=' . $url . '\'; return false"> <img src="//www.reddit.com/static/spreddit7.gif" alt="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SUBMIT_REDDIT").'" border="0" /> </a>';
+                        break;
+                }
                 
-                case 1:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/static/button/button1.js"></script>';
-                    break;
-
-                case 2:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/static/button/button2.js"></script>';
-                    break;
-                case 3:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/static/button/button3.js"></script>';
-                    break;
-                case 4:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=0"></script>';
-                    break;
-                case 5:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=1"></script>';
-                    break;
-                case 6:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=2"></script>';
-                    break;
-                case 7:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=3"></script>';
-                    break;
-                case 8:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=4"></script>';
-                    break;
-                case 9:
-                    $html .='<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=5"></script>';
-                    break;
-                case 10:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit6.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;
-                case 11:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit1.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 12:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit2.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 13:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit3.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 14:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit4.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 15:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit5.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 16:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit8.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 17:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit9.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 18:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit10.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 19:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit11.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 20:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit12.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 21:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit13.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                case 22:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url='. $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit14.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;   
-                                    
-                default:
-                    $html .='<a href="http://www.reddit.com/submit" onclick="window.location = \'http://www.reddit.com/submit?url=' . $url . '\'; return false"> <img src="http://www.reddit.com/static/spreddit7.gif" alt="Submit to reddit" border="0" /> </a>';
-                    break;
-            }
-            
-            $html .='</div>';
+                $html .='</div>';
                 
         }
         
         return $html;
     }
     
-    private function getTumblr($params, $url, $title){
+    private function getTumblr($params, $url){
             
         $html = "";
         if($params->get("tumblrButton")) {
@@ -905,36 +1323,36 @@ tweetmeme_source = "' . $params->get("twitterName") . '";
             $html .= '<div class="itp-fshare-tbr">';
             
             if($params->get("loadTumblrJsLib")) {
-                $html .= '<script type="text/javascript" src="http://platform.tumblr.com/v1/share.js"></script>';
+                $html .= '<script src="//platform.tumblr.com/v1/share.js"></script>';
             }
             
             switch($params->get("tumblrType")) {
                 
                 case 1:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:61px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_2.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:62px; height:20px; background:url(\'//platform.tumblr.com/v1/share_2.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
 
                 case 2:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:129px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_3.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:129px; height:20px; background:url(\'//platform.tumblr.com/v1/share_3.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
                 case 3:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:20px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_4.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:20px; height:20px; background:url(\'//platform.tumblr.com/v1/share_4.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
                 case 4:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:81px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_1T.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:81px; height:20px; background:url(\'//platform.tumblr.com/v1/share_1T.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
                 case 5:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:61px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_2T.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:62px; height:20px; background:url(\'//platform.tumblr.com/v1/share_2T.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
                 case 6:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:129px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_3T.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:129px; height:20px; background:url(\'//platform.tumblr.com/v1/share_3T.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
                 case 7:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:20px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_4T.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:20px; height:20px; background:url(\'//platform.tumblr.com/v1/share_4T.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;   
                                     
                 default:
-                    $html .='<a href="http://www.tumblr.com/share" title="Share on Tumblr" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:81px; height:20px; background:url(\'http://platform.tumblr.com/v1/share_1.png\') top left no-repeat transparent;">Share on Tumblr</a>';
+                    $html .='<a href="http://www.tumblr.com/share" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'" style="display:inline-block; text-indent:-9999px; overflow:hidden; width:81px; height:20px; background:url(\'//platform.tumblr.com/v1/share_1.png\') top left no-repeat transparent;">'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_SHARE_THUMBLR").'</a>';
                     break;
             }
             
@@ -944,61 +1362,67 @@ tweetmeme_source = "' . $params->get("twitterName") . '";
         return $html;
     }
     
-    private function getBuffer($params, $url, $title){
+    private function getPinterest($params, $url, $title, $image){
         
         $html = "";
-        if($params->get("bufferButton")) {
+        if($params->get("pinterestButton")) {
             
-            $html = '
-            <div class="itp-fshare-buffer">
-            <a href="http://bufferapp.com/add" class="buffer-add-button" data-text="' . $title . '" data-url="'.$url.'" data-count="'.$params->get("bufferType").'" data-via="'.$params->get("bufferTwitterName").'">Buffer</a><script type="text/javascript" src="http://static.bufferapp.com/js/button.js"></script>
-            </div>
-            ';
+            $media = "";
+            if(!empty($image)) {
+                $media = "&amp;media=" . rawurlencode($image);
+            }
+            
+            $html .= '<div class="itp-fshare-pinterest">';
+            $html .= '<a href="http://pinterest.com/pin/create/button/?url=' . rawurlencode($url) . $media. '&amp;description=' . rawurlencode($title) . '" class="pin-it-button" count-layout="'.$params->get("pinterestType", "horizontal").'"><img border="0" src="//assets.pinterest.com/images/PinExt.png" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_PIN_IT").'" /></a>';
+            $html .= '</div>';
+            
+            // Load the JS library
+            if($params->get("loadPinterestJsLib")) {
+                $html .= '<script src="//assets.pinterest.com/js/pinit.js"></script>';
+            }
         }
         
         return $html;
     }
     
-    private function getPinterest($params, $url, $title){
-        
-        $title = html_entity_decode($title,ENT_QUOTES, "UTF-8");
+    private function getStumbpleUpon($params, $url){
         
         $html = "";
-        if($params->get("pinterestButton")) {
+        if($params->get("stumbleButton")) {
             
-            $html .= '<div class="itp-fshare-pinterest">';
+            $html = "
+            <div class=\"itp-fshare-su\">
+            <su:badge layout='" . $params->get("stumbleType", 1). "' location='".$url."'></su:badge>
+            </div>
             
-            // Load the JS library
-            if($params->get("loadPinterestJsLib")) {
-                $html .= '<!-- Include ONCE for ALL buttons in the page -->
-<script type="text/javascript">
-(function() {
-    window.PinIt = window.PinIt || { loaded:false };
-    if (window.PinIt.loaded) return;
-    window.PinIt.loaded = true;
-    function async_load(){
-        var s = document.createElement("script");
-        s.type = "text/javascript";
-        s.async = true;
-        if (window.location.protocol == "https:")
-            s.src = "https://assets.pinterest.com/js/pinit.js";
-        else
-            s.src = "http://assets.pinterest.com/js/pinit.js";
-        var x = document.getElementsByTagName("script")[0];
-        x.parentNode.insertBefore(s, x);
+            <script>
+              (function() {
+                var li = document.createElement('script'); li.type = 'text/javascript'; li.async = true;
+                li.src = ('https:' == document.location.protocol ? 'https:' : 'http:') + '//platform.stumbleupon.com/1/widgets.js';
+                var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(li, s);
+              })();
+            </script>
+                ";
+        }
+        
+        return $html;
     }
-    if (window.attachEvent)
-        window.attachEvent("onload", async_load);
-    else
-        window.addEventListener("load", async_load, false);
-})();
-</script>
-';
+    
+    private function getBuffer($params, $url, $title, $image =""){
+        
+        $html = "";
+        if($params->get("bufferButton")) {
+            
+            $picture = "";
+            if(!empty($image)) {
+                $picture = 'data-picture="'.$image.'"';
             }
             
-$html .= '<!-- Customize and include for EACH button in the page -->
-<a href="http://pinterest.com/pin/create/button/?url=' . rawurlencode($url) . '&amp;description=' . rawurlencode($title) . '" class="pin-it-button" count-layout="'.$params->get("pinterestType").'">Pin It</a>';
-            $html .= '</div>';
+            $html = '
+            <div class="itp-fshare-buffer">
+            <a href="http://bufferapp.com/add" class="buffer-add-button" '.$picture.' data-text="' . $title . '" data-url="'.$url.'" data-count="'.$params->get("bufferType").'" data-via="'.$params->get("bufferTwitterName").'">Buffer</a><script src="//static.bufferapp.com/js/button.js"></script>
+            </div>
+            ';
         }
         
         return $html;
@@ -1165,4 +1589,141 @@ $html .= '<!-- Customize and include for EACH button in the page -->
         return $result;
         
     }
+    
+    private function getGoogleShare($params, $url){
+        
+        $html = "";
+        if($params->get("gsButton")) {
+            
+            // Get locale code
+            if(!$params->get("dynamicLocale")) {
+                $this->gshareLocale = $params->get("gsLocale", "en");
+            } else {
+                $locales = $this->getButtonsLocales($this->locale); 
+                $this->gshareLocale = JArrayHelper::getValue($locales, "google", "en");
+            }
+            
+            $html .= '<div class="itp-fshare-gshare">';
+            
+            switch($params->get("gsRenderer")) {
+                
+                case 1:
+                    $html .= $this->genGoogleShare($params, $url);
+                    break;
+                    
+                default:
+                    $html .= $this->genGoogleShareHTML5($params, $url);
+                    break;
+            }
+            
+            // Load the JavaScript asynchroning
+        	if($params->get("loadGoogleJsLib")) {
+        
+                $html .= '<script>';
+                if($this->gshareLocale) {
+                   $html .= ' window.___gcfg = {lang: "'.$this->gshareLocale.'"}; ';
+                }
+                
+                $html .= '
+                  (function() {
+                    var po = document.createElement("script"); po.type = "text/javascript"; po.async = true;
+                    po.src = "https://apis.google.com/js/plusone.js";
+                    var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(po, s);
+                  })();
+                </script>';
+            }
+          
+            $html .= '</div>';
+        }
+        
+        return $html;
+    }
+    
+    /**
+     * 
+     * Render the Google Share in standart syntax
+     * 
+     * @param array  $params
+     * @param string $url
+     * @param string $language
+     */
+    private function genGoogleShare($params, $url) {
+        
+        $annotation = "";
+        if($params->get("gsAnnotation")) {
+            $annotation = ' annotation="' . $params->get("gsAnnotation") . '"';
+        }
+        
+        $size = "";
+        if($params->get("gsAnnotation") != "vertical-bubble") {
+            $size = ' height="' . $params->get("gsType") . '" ';
+        }
+        
+        $html = '<g:plus action="share" ' . $annotation . $size . ' href="' . $url . '"></g:plus>';
+        
+        return $html;
+    }
+    
+    /**
+     * 
+     * Render the Google Share in HTML5 syntax
+     * 
+     * @param array $params
+     * @param string $url
+     * @param string $language
+     */
+    private function genGoogleShareHTML5($params, $url) {
+        
+        $annotation = "";
+        if($params->get("gsAnnotation")) {
+            $annotation = ' data-annotation="' . $params->get("gsAnnotation") . '"';
+        }
+        
+        $size = "";
+        if($params->get("gsAnnotation") != "vertical-bubble") {
+            $size = ' data-height="' . $params->get("gsType") . '" ';
+        }
+        
+        $html = '<div class="g-plus" data-action="share" ' . $annotation . $size . ' data-href="' . $url . '"></div>';
+
+        return $html;
+    }
+    
+    private function genFloating($content) {
+        $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
+        
+        if($this->params->get("resizeProtection")) {
+            $js = '
+            window.addEvent( "domready" ,  function() {
+            
+                document.itpFloatingTimer = null;
+                document.itpFloatingStyle = null;
+                
+                window.addEvent("resize", function(){
+                	  
+                      window.clearTimeout(document.itpFloatingTimer);
+                      
+                      document.itpFloatingTimer = (function(){
+                          if (window.outerHeight < screen.availHeight) {
+                            document.id("itp-fshare").set("class", "itp-fshare-right");
+                            document.itpFloatingStyle = document.id("itp-fshare").get("style");
+                            document.id("itp-fshare").erase("style");
+                           } else {
+                             document.id("itp-fshare").set("class","itp-fshare-floating");
+                             document.id("itp-fshare").set("style", document.itpFloatingStyle);
+                           }
+                      }).delay(50);
+                      
+                });
+                
+             })';
+            
+            $doc     = JFactory::getDocument();
+        	/** @var $doc JDocumentHtml **/
+            $doc->addScriptDeclaration($js);
+        }
+        
+        return $html;
+    }
+    
 }

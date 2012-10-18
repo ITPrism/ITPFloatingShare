@@ -28,34 +28,36 @@
 }
 
 .itp-fshare-tw{
-    margin:10px 0 0 5px;
+    margin:10px 0 0 5px !important;
 }
 
 .itp-fshare-fbl{
-    margin:10px 0 0 19px;
+    margin:10px 0 0 5px !important;
 }
 .itp-fshare-digg{
-	margin:10px 0;
+	margin:10px 0 !important;
 }
 
 .itp-fshare-su{
-	margin:10px 0 0 7px;
+	margin:10px 0 0 7px !important;
 }
 .itp-fshare-lin{
-	margin:10px 0 0 6px;
+	margin:10px 0 0 6px !important;
 }
 
 .itp-fshare-gone{
-    margin:10px 0 0 5px;
+    margin:10px 0 0 5px !important;
+}
+.itp-fshare-gshare{
+    margin:10px 0 0 5px !important;
 }
 
-
 .itp-fshare-retweetme{
-    margin: 10px 0 0 5px;
+    margin: 10px 0 0 5px !important;
 }
 
 .itp-fshare-reddit{
-    margin: 10px 0 0 7px;
+    margin: 10px 0 0 7px !important;
 }
 .itp-fshare-reddit a:hover{
     text-decoration: none !important;
@@ -63,13 +65,13 @@
 }
 
 .itp-fshare-tbr{
-    margin: 10px 0 0 0;
+    margin: 10px 0 0 0 !important;
 }
 
 .itp-fshare-pinterest {
-    margin: 10px 0 0 5px;
+    margin: 10px 0 0 5px !important;
 }
 
 .itp-fshare-buffer {
-    margin: 10px 0 0 5px;
+    margin: 10px 0 0 5px !important;
 }
