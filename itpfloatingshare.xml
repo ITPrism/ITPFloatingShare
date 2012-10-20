@@ -26,7 +26,7 @@
     <config>
         <fields name="params">
             <fieldset name="basic">
-                <field name="position" type="list" default="2" label="PLG_CONTENT_ITPFLOATINGSHARE_POSITION" description="PLG_CONTENT_ITPFLOATINGSHARE_POSITION_DESC" >
+                <field name="position" type="list" default="0" label="PLG_CONTENT_ITPFLOATINGSHARE_POSITION" description="PLG_CONTENT_ITPFLOATINGSHARE_POSITION_DESC" >
                    <option value="1">PLG_CONTENT_ITPFLOATINGSHARE_FLOATING</option>
                    <option value="2">PLG_CONTENT_ITPFLOATINGSHARE_LEFT</option>
                    <option value="0">PLG_CONTENT_ITPFLOATINGSHARE_RIGHT</option>
