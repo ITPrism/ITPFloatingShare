@@ -33,6 +33,8 @@ class plgContentITPFloatingShare extends JPlugin {
     private $currentTask    = "";
     private $currentOption  = "";
     
+    private $imgPattern     = '/src="([^"]*)"/i'; 
+    
     /**
      * Constructor
      *
@@ -75,7 +77,7 @@ class plgContentITPFloatingShare extends JPlugin {
      * @param   int     The 'page' number
      */
     public function onContentPrepare($context, &$article, &$params, $page = 0) {
-
+        
         if (!$article OR !isset($this->params)) { return; };      
         
         $app = JFactory::getApplication();
@@ -137,55 +139,45 @@ class plgContentITPFloatingShare extends JPlugin {
             	// I don't know why but $option contains "com_content" for a value
             	// I hope it will be fixed in the future versions of "com_myblog"
             	if(!strcmp($context, "com_myblog") == 0) {
-            		if($this->isContentRestricted($article, $context)) {
-	                    $result = true;
-	                }
+                    $result = $this->isContentRestricted($article, $context);
 	                break;
             	} 
 	                
             case "com_myblog":
-                
-                if($this->isMyBlogRestricted($article, $context)) {
-                    $result = true;
-                }
-                
+                $result = $this->isMyBlogRestricted($article, $context);
                 break;
                     
             case "com_k2":
-                if($this->isK2Restricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isK2Restricted($article, $context);
                 break;
                 
             case "com_virtuemart":
-                if($this->isVirtuemartRestricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isVirtuemartRestricted($article, $context);
                 break;
 
             case "com_jevents":
-                if($this->isJEventsRestricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isJEventsRestricted($article, $context);
                 break;
 
             case "com_easyblog":
-                if($this->isEasyBlogRestricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isEasyBlogRestricted($article, $context);
                 break;
                 
             case "com_vipportfolio":
-                if($this->isVipPortfolioRestricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isVipPortfolioRestricted($article, $context);
                 break;
                 
             case "com_zoo":
-                if($this->isZooRestricted($article, $context)) {
-                    $result = true;
-                }
+                $result = $this->isZooRestricted($article, $context);
                 break;    
+                
+             case "com_jshopping":
+                $result = $this->isJoomShoppingRestricted($article, $context);
+                break;  
+
+            case "com_hikashop":
+                $result = $this->isHikaShopRestricted($article, $context);
+                break; 
             default:
                 $result = true;
                 break;   
@@ -364,6 +356,9 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
+        // Preapare VirtueMart object
+        $this->prepareVirtuemartObject($article);
+        
         return false;
     }
     
@@ -384,12 +379,14 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
+        $this->prepareMyBlogObject($article);
+        
         return false;
     }
     
 	/**
      * 
-     * It's a method that verify restriction for the component "com_myblog"
+     * It's a method that verify restriction for the component "com_vipportfolio"
      * @param object $article
      * @param string $context
      */
@@ -398,6 +395,12 @@ class plgContentITPFloatingShare extends JPlugin {
         // Check for currect context
         if(strpos($context, "com_vipportfolio") === false) {
            return true;
+        }
+        
+	    // Verify the option for displaying in layout "lineal"
+        $displayInLineal     = $this->params->get('vipportfolio_lineal', 0);
+        if(!$displayInLineal){
+            return true;
         }
         
         return false;
@@ -416,6 +419,12 @@ class plgContentITPFloatingShare extends JPlugin {
            return true;
         }
         
+	    // Verify the option for displaying in view "item"
+        $displayInItem     = $this->params->get('zoo_display', 0);
+        if(!$displayInItem){
+            return true;
+        }
+        
 	    // Check for valid view or task
 	    // I have check for task because if the user comes from view category, the current view is "null" and the current task is "item"
         if( (strcmp("item", $this->currentView) != 0 ) AND (strcmp("item", $this->currentTask) != 0 )){
@@ -430,74 +439,7 @@ class plgContentITPFloatingShare extends JPlugin {
         }
         $numbers = 1;
         
-        $itemData = $this->getZooItemData($article);
-        
         return false;
-    }
-    
-    /**
-     * 
-     * Get data of ZOO item and set it to $article object
-     * @param object $article
-     */
-    private function getZooItemData(&$article) {
-        
-        $article->image_intro = "";
-        
-        $url       = JURI::getInstance();
-        
-        // Get the ZOO URI
-        $zooURI    = $url->getPath();
-        if($url->getQuery()) {
-            $zooURI .= "?".$url->getQuery();
-        }
-        $article->link = $zooURI;
-        
-        // Get alias
-        $zooURL    = $url->toString();
-        $zooURL    = parse_url($zooURL); 
-        $path      = JArrayHelper::getValue($zooURL, "path");
-        $urlParts  = explode("/", $path);
-        $itemAlias = array_pop($urlParts);
-        
-        if(!empty($itemAlias)) {
-            $db = JFactory::getDbo();
-            /** @var $db JDatabaseMySQLi **/
-            
-            $qiery = $db->getQuery(true);
-               
-            $qiery
-                ->select("id, name, elements, params")
-                ->from("#__zoo_item")
-                ->where("alias=".$db->quote($itemAlias));
-                  
-            $db->setQuery($qiery);
-            $result = $db->loadObject();
-            if(!empty($result)) {
-                $result->elements = json_decode($result->elements, true);
-                $result->params   = json_decode($result->params, true);
-                $article->id      = (int)$result->id;
-                
-                // Get title
-                $article->title  = JString::trim( JArrayHelper::getValue($result->params, "metadata.title", "") );
-                if(!$article->title) {
-                    $article->title  = JString::trim( JArrayHelper::getValue($result, "name", "") );
-                }
-                
-                // Get image
-                foreach($result->elements as $element) {
-                    if(isset($element["file"])) {
-                        if(!empty($element["file"])) {
-                            $pattern = "/(.png|.jpg|.gif)/i";
-                            if(preg_match($pattern, $element["file"])) {
-                                $article->image_intro = $element["file"];
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
     
     /**
@@ -542,7 +484,198 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
+        $this->prepareEasyBlogObject($article);
+        
         return false;
+    }
+    
+	/**
+     * 
+     * It's a method that verify restriction for the component "com_joomshopping"
+     * @param object $article
+     * @param string $context
+     */
+	private function isJoomShoppingRestricted(&$article, $context) {
+        
+        // Check for currect context
+        if(false === strpos($context, "com_content.article")) {
+           return true;
+        }
+        
+	    // Verify the option for displaying in view "view"
+        $displayInDetails     = $this->params->get('joomshopping_display', 0);
+        if(!$displayInDetails OR !isset($article->product_id)){
+            return true;
+        }
+        
+        $this->prepareJoomShoppingObject($article);
+        
+        return false;
+    }
+    
+	/**
+     * 
+     * It's a method that verify restriction for the component "com_hikashop"
+     * @param object $article
+     * @param string $context
+     */
+	private function isHikaShopRestricted(&$article, $context) {
+	    
+        // Check for currect context
+        if(false === strpos($context, "text")) {
+           return true;
+        }
+        
+	    // Verify the option for displaying in view "text"
+        $displayInDetails     = $this->params->get('hikashop_display', 0);
+        if(!$displayInDetails){
+            return true;
+        }
+        
+        $this->prepareHikashopObject($article);
+        
+        return false;
+    }
+    
+    private function prepareMyBlogObject(&$article) {
+        
+        $article->image_intro = "";
+        $matches = array();
+            
+        preg_match( $this->imgPattern, $article->fulltext, $matches ) ;
+        if(isset($matches[1])) {
+            $article->image_intro = JArrayHelper::getValue($matches, 1, "");
+        }
+            
+    }
+    
+    private function prepareEasyBlogObject(&$article) {
+        
+        $article->image_intro = "";
+        $matches = array();
+            
+        preg_match( $this->imgPattern, $article->content, $matches ) ;
+        if(isset($matches[1])) {
+            $article->image_intro = JArrayHelper::getValue($matches, 1, "");
+        }
+            
+    }
+    
+    private function prepareVirtuemartObject(&$article) {
+        
+        $article->image_intro = "";
+        
+        if(!empty($article->id)) {
+            
+            $db = JFactory::getDbo();
+            /** @var $db JDatabaseMySQLi **/
+            
+            $query = $db->getQuery(true);
+            
+            $query
+                ->select("#__virtuemart_medias.file_url")
+                ->from("#__virtuemart_medias")
+                ->join("RIGHT", "#__virtuemart_product_medias ON #__virtuemart_product_medias.virtuemart_media_id = #__virtuemart_medias.virtuemart_media_id")
+                ->where("#__virtuemart_product_medias.virtuemart_product_id=" . (int)$article->id)
+                ->where("#__virtuemart_medias.file_is_product_image=1");
+              
+            $db->setQuery($query, 0, 1);
+            $fileURL = $db->loadResult();
+            if(!empty($fileURL)) {
+                $article->image_intro = $fileURL;
+            }
+            
+        }
+    }
+    
+    private function prepareJoomShoppingObject(&$article) {
+        
+        $article->image_intro = "";
+        
+        if(!empty($article->product_id)) {
+            
+            $db = JFactory::getDbo();
+            /** @var $db JDatabaseMySQLi **/
+            
+            $query = $db->getQuery(true);
+            
+            $query
+                ->select("image_name")
+                ->from("#__jshopping_products_images")
+                ->where("product_id=" . (int)$article->product_id)
+                ->order("ordering");
+              
+            $db->setQuery($query, 0, 1);
+            $imageName = $db->loadResult();
+            if(!empty($imageName)) {
+                $config = JSFactory::getConfig();
+                $article->image_intro = $config->image_product_live_path."/".$imageName;
+            }
+            
+        }
+    }
+    
+    private function prepareHikashopObject(&$article) {
+        
+        $article->image_intro = "";
+        $article->id          = null;
+        
+        $url = JURI::getInstance();
+        
+        // Get the URI
+        $zooURI = $url->getPath();
+        if($url->getQuery()) {
+            $zooURI .= "?".$url->getQuery();
+        }
+        $article->link = $zooURI;
+        
+        // Get product id
+        $config = JFactory::getConfig();
+        $sef    = $config->get("sef");
+        if(!$config->get("sef")) {
+            $urlQuery = $url->getQuery();
+            parse_str($urlQuery, $itemURL);
+            $article->id = JArrayHelper::getValue($itemURL, "cid");
+        } else {
+            // Get alias
+            $itemURL     = $url->toString();
+            $itemURL     = parse_url($itemURL);
+            $path        = JArrayHelper::getValue($itemURL, "path");
+            $urlParts    = explode("/", $path);
+            $itemAlias   = array_pop($urlParts);
+            $article->id = intval($itemAlias);
+        }
+        
+        if(!empty($article->id)) {
+            $db = JFactory::getDbo();
+            /** @var $db JDatabaseMySQLi **/
+            
+            $qiery = $db->getQuery(true);
+               
+            $qiery
+                ->select("#__hikashop_product.product_name, #__hikashop_product.product_page_title, #__hikashop_file.file_path")
+                ->from("#__hikashop_product")
+                ->join("LEFT", "#__hikashop_file ON #__hikashop_product.product_id = #__hikashop_file.file_ref_id")
+                ->where("#__hikashop_product.product_id=" . (int)$article->id);
+                  
+            $db->setQuery($qiery, 0, 1);
+            $result = $db->loadObject();
+            
+            if(!empty($result)) {
+                
+                // Get title
+                $article->title = $result->product_page_title;
+                if(!$article->title) {
+                    $article->title = $result->product_name;
+                }
+                
+                // Get image
+                $config = hikashop_config();
+                $uploadFolder = $config->get("uploadfolder");
+                $article->image_intro = $uploadFolder.$result->file_path;
+            }
+        }
+        
     }
     
     /**
@@ -583,9 +716,9 @@ class plgContentITPFloatingShare extends JPlugin {
     
     private function getUrl(&$article, $context) {
         
-        $url = JURI::getInstance();
-        $uri = "";
-        $domain= $url->getScheme() ."://" . $url->getHost();
+        $uri     = "";
+        $url     = JURI::getInstance();
+        $domain  = $url->getScheme() ."://" . $url->getHost();
         
         switch($this->currentOption) {
             case "com_content":
@@ -614,7 +747,7 @@ class plgContentITPFloatingShare extends JPlugin {
             case "com_jevents":
                 // Display buttons only in the description
                 if (is_a($article, "jIcalEventRepeat")) { 
-                    $uri    = $url->getPath();
+                    $uri = $this->getCurrentURI($url);
                 };
                 
                 break;
@@ -628,6 +761,14 @@ class plgContentITPFloatingShare extends JPlugin {
                 break;
                 
             case "com_zoo":
+                $uri = $this->getCurrentURI($url);
+                break;
+                
+            case "com_jshopping":
+                $uri = $this->getCurrentURI($url);
+                break;
+
+            case "com_hikashop":
                 $uri = $article->link;
                 break;
                 
@@ -638,6 +779,21 @@ class plgContentITPFloatingShare extends JPlugin {
         
         return $domain.$uri;
         
+    }
+    
+    /**
+     * 
+     * Generate a URI based on currend URL
+     */
+    private function getCurrentURI($url) {
+        
+        $uri    = $url->getPath();
+        if($url->getQuery()) {
+            $uri .= "?".$url->getQuery();
+        }
+        
+        return $uri;
+            
     }
     
     private function getTitle(&$article, $context) {
@@ -690,9 +846,18 @@ class plgContentITPFloatingShare extends JPlugin {
                 break;
 
             case "com_zoo":
+                $doc     = JFactory::getDocument();
+                /**  @var $doc JDocumentHtml **/
+                $title    =  $doc->getTitle();
+                break;
+
+            case "com_jshopping":
                 $title = $article->title;
                 break;
-                
+
+            case "com_hikashop":
+                $title = $article->title;
+                break;
             default:
                 $title = "";
                 break;   
@@ -724,10 +889,10 @@ class plgContentITPFloatingShare extends JPlugin {
 	                break;
             	} 
             	
+            // Using contect because the context show us it is com_myblog
+    	    // $this->currentOption contains value "com_content" 
         	case "com_myblog":
-        	    // Using contect because the context show us it is com_myblog
-        	    // $this->currentOption contains value "com_content" 
-        	    $result = $this->findImage($context, $article);
+        	    $result = $article->image_intro;
         	    break;
 
             case "com_k2":
@@ -737,20 +902,29 @@ class plgContentITPFloatingShare extends JPlugin {
                 break;
                 
             case "com_virtuemart":
-                $result = $this->findImage($this->currentOption, $article);
+                $result = JURI::root().$article->image_intro;
                 break;
             
             case "com_easyblog":
-                $result = $this->findImage($this->currentOption, $article);
+                $result = JURI::root().$article->image_intro;
                 break;
                 
             case "com_vipportfolio":
                 $result = JURI::root().$article->image_intro;
                 break;
 
+            case "com_jshopping":
+                $result = $article->image_intro;
+                break;
+                
             case "com_zoo":
+                $result = "";
+                break;
+                
+            case "com_hikashop":
                 $result = JURI::root().$article->image_intro;
                 break;
+                    
             default:
                 $result = "";
                 break;   
@@ -758,64 +932,6 @@ class plgContentITPFloatingShare extends JPlugin {
         
         return $result;
         
-    }
-    
-    private function findImage($option, $article) {
-        
-        $matches = array();
-        $pattern = '/src="([^"]*)"/i'; 
-        $fileURL = "";
-        
-        $db = JFactory::getDbo();
-        /** @var $db JDatabaseMySQLi **/
-        
-        $qiery = $db->getQuery(true);
-        
-        switch($option) {
-            
-            case "com_virtuemart":
-               
-                $qiery
-                    ->select("#__virtuemart_medias.file_url")
-                    ->from("#__virtuemart_medias")
-                    ->join("RIGHT", "#__virtuemart_product_medias ON #__virtuemart_product_medias.virtuemart_media_id = #__virtuemart_medias.virtuemart_media_id")
-                    ->where("#__virtuemart_product_medias.virtuemart_product_id=" . (int)$article->id)
-                    ->where("#__virtuemart_medias.file_is_product_image=1");
-                  
-                $db->setQuery($qiery, 0, 1);
-                $fileURL = $db->loadResult();
-                if(!empty($fileURL)) {
-                    $fileURL = JURI::base().$fileURL;
-                }
-                
-                break;
-
-            case "com_myblog":
-                preg_match( $pattern, $article->fulltext, $matches ) ;
-                if(isset($matches[1])) {
-                    $fileURL = JArrayHelper::getValue($matches, 1, "");
-                }
-                break;
-                
-            case "com_easyblog":
-                preg_match( $pattern, $article->content, $matches ) ;
-                if(isset($matches[1])) {
-                    $fileURL = JURI::base().JArrayHelper::getValue($matches, 1, "");
-                }
-                break;
-                
-            case "com_zoo":
-                break;
-            
-            case "com_vipportfolio":
-                break;
-                
-            default:
-                
-                break;   
-        }
-        
-        return $fileURL;
     }
     
     /**
