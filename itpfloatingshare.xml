@@ -11,8 +11,8 @@
     <description>PLG_CONTENT_ITPFLOATINGSHARE_DESC</description>
     
     <languages  folder="language">
-        <language tag="en-GB">en-GB/en-GB.plg_CONTENT_ITPFLOATINGSHARE.ini</language>
-        <language tag="en-GB">en-GB/en-GB.plg_CONTENT_ITPFLOATINGSHARE.sys.ini</language>
+        <language tag="en-GB">en-GB/en-GB.plg_content_itpfloatingshare.ini</language>
+        <language tag="en-GB">en-GB/en-GB.plg_content_itpfloatingshare.sys.ini</language>
     </languages> 
     
     <help url="PLG_CONTENT_ITPFLOATINGSHARE_HELP_URL"/>
