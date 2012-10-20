@@ -869,7 +869,7 @@ class plgContentITPFloatingShare extends JPlugin {
     
     private function getImage($article, $context) {
         
-    	$result = false;
+    	$result = "";
     	
     	switch($this->currentOption) {
             case "com_content":
@@ -881,8 +881,8 @@ class plgContentITPFloatingShare extends JPlugin {
             	    
             		if(!empty($article->images)) {
             		    $images = json_decode($article->images);
-            		    if(isset($images->image_intro)) {
-            		        $result = JURI::root().$images->image_intro;
+            		    if(isset($images->image_intro) AND !empty($images->image_intro)) {
+        		            $result = JURI::root().$images->image_intro;
             		    }
             		}
             		 
