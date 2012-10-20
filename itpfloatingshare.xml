@@ -8,7 +8,7 @@
     <authorUrl>http://itprism.com</authorUrl>
     <version>1.4</version>
     <creationDate>20 October, 2012</creationDate>
-    <description></description>
+    <description>PLG_CONTENT_ITPFLOATINGSHARE_DESC</description>
     
     <languages  folder="language">
         <language tag="en-GB">en-GB/en-GB.plg_CONTENT_ITPFLOATINGSHARE.ini</language>
