@@ -138,7 +138,7 @@ class plgContentITPFloatingShare extends JPlugin {
             	// It's an implementation of "com_myblog"
             	// I don't know why but $option contains "com_content" for a value
             	// I hope it will be fixed in the future versions of "com_myblog"
-            	if(!strcmp($context, "com_myblog") == 0) {
+            	if(strcmp($context, "com_myblog") != 0) {
                     $result = $this->isContentRestricted($article, $context);
 	                break;
             	} 
