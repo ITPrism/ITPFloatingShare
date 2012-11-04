@@ -1,11 +1,17 @@
 ITPFloatingShare Plugin for Joomla! 
 ==========================
-( Version 1.4 )
+( Version 1.5 )
 --------------------------
 
 
 Changelog
 ---------
+
+v1.5
+----
+* Fixed issues with K2
+* Ported to Joomla! 3.0
+* Improved
 
 v1.4
 ----

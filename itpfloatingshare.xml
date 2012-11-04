@@ -2,12 +2,12 @@
 <extension version="2.5" type="plugin" group="content" method="upgrade">
     <name>Content - ITPFloatingShare</name>
     <author>Todor Iliev</author>
+    <creationDate>January, 2011</creationDate>
     <copyright>Copyright (C) 2010 Todor Iliev ( ITPrism.com ). All rights reserved.</copyright>
     <license>http://www.gnu.org/copyleft/gpl.html GNU/GPL</license>
     <authorEmail>todor@itprism.com</authorEmail>
     <authorUrl>http://itprism.com</authorUrl>
-    <version>1.4</version>
-    <creationDate>20 October, 2012</creationDate>
+    <version>1.5</version>
     <description>PLG_CONTENT_ITPFLOATINGSHARE_DESC</description>
     
     <languages  folder="language">
@@ -20,6 +20,7 @@
     <files>
         <filename plugin="itpfloatingshare">itpfloatingshare.php</filename>
 		<filename>style.css</filename>
+		<filename>shorturl.php</filename>
 		<filename>index.html</filename>
 		<filename>README.md</filename>
     </files>
@@ -115,18 +116,18 @@
                 </field>
                 <field name="facebookLikeType" type="list" default="box_count" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_TYPE" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_TYPE_DESC" >
                     <option value="standard">PLG_CONTENT_ITPFLOATINGSHARE_STANDARD</option>
-                   <option value="box_count">PLG_CONTENT_ITPFLOATINGSHARE_BOX_COUNT</option>
-                   <option value="button_count">PLG_CONTENT_ITPFLOATINGSHARE_BUTTON_COUNT</option>
+                    <option value="box_count">PLG_CONTENT_ITPFLOATINGSHARE_BOX_COUNT</option>
+                    <option value="button_count">PLG_CONTENT_ITPFLOATINGSHARE_BUTTON_COUNT</option>
                 </field>
                 <field name="facebookLikeFaces" type="radio" default="0" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FACES" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FACES_DESC" >
                    <option value="0">JHIDE</option>
                    <option value="1">JSHOW</option>
                 </field>
-                <field name="facebookLikeColor" type="list" default="light" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FONT" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FONT_DESC" >
+                <field name="facebookLikeColor" type="list" default="light" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_COLOR" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_COLOR_DESC" >
                    <option value="light">PLG_CONTENT_ITPFLOATINGSHARE_LIGHT</option>
                    <option value="dark">PLG_CONTENT_ITPFLOATINGSHARE_DARK</option>
                 </field>
-                <field name="facebookLikeFont" type="list" default="" label="Facebook Like Font" description="The font to display in the button. Options: 'arial', 'lucida grande', 'segoe ui', 'tahoma', 'trebuchet ms', 'verdana' " >
+                <field name="facebookLikeFont" type="list" default="" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FONT" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FONT_DESC" >
                    <option value=""></option>
                     <option value="arial">arial</option>
                     <option value="lucida grande">lucida grande</option>
