@@ -514,7 +514,7 @@
                        <option value="0">JNO</option>
                        <option value="1">JYES</option>
                    </field>
-                   <field name="fpMinWidth" type="text" default="920" label="PLG_CONTENT_ITPFLOATINGSHARE_MIN_WIDTH" description="PLG_CONTENT_ITPFLOATINGSHARE_MIN_WIDTH_DESC" />
+                   <field name="fpMinWidth" type="text" default="1300" label="PLG_CONTENT_ITPFLOATINGSHARE_MIN_WIDTH" description="PLG_CONTENT_ITPFLOATINGSHARE_MIN_WIDTH_DESC" />
                 </fieldset>
                 
                 <fieldset name="short_url_settings" label="PLG_CONTENT_ITPFLOATINGSHARE_SHORTENER_SETTINGS">
