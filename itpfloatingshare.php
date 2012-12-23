@@ -279,22 +279,9 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
-        if(strcmp("item", $this->currentView) == 0) {
-            
-            // Fix the issue with media tab
-            $itemVideo = $params->get("itemVideo");
-            static $itemVideoExists = 1;
-            
-            if($itemVideo AND ($itemVideoExists == 1) ) {
-                $itemVideoExists -= 1;
-                return true;
-            }
-            
-            $displayInArticles     = $this->params->get('k2DisplayInArticles', 0);
-            if(!$displayInArticles){
-                return true;
-            }
-            
+        $displayInItem         = $this->params->get('k2DisplayInArticles', 0);
+        if(!$displayInItem AND ( strcmp("item", $this->currentView) == 0) ) {
+            return true;
         }
         
         $this->prepareK2Object($article, $params);
@@ -920,7 +907,9 @@ class plgContentITPFloatingShare extends JPlugin {
 
             case "com_k2":
     	        if(!empty($article->imageSmall)) {
-    		        $result = JURI::root().$article->imageSmall;
+    	            $root   = JURI::root();
+    	            $root   = substr($root, 0, -1);
+    		        $result = $root.$article->imageSmall;
         		}
                 break;
                 
@@ -1830,37 +1819,48 @@ class plgContentITPFloatingShare extends JPlugin {
     }
     
     private function genFloating($content) {
-        $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
+        
+        $doc     = JFactory::getDocument();
+    	/** @var $doc JDocumentHtml **/
+        
+        $html = '<div class="itp-fshare-floating itp-fshare-fstyle" id="itp-fshare">' . $content . '</div>';
+        
+        $css = '.itp-fshare-fstyle {
+        	position:fixed; 
+        	top:' . $this->params->get("fpTop","30") . 'px !important; 
+        	left:' . $this->params->get("fpLeft","60") . 'px !important;
+    	}';
+        
+        $doc->addStyleDeclaration($css);
         
         if($this->params->get("resizeProtection")) {
-            $js = '
+           
+           JHtml::_('behavior.framework');
+            
+           $js = '
             window.addEvent( "domready" ,  function() {
             
-                document.itpFloatingTimer = null;
-                document.itpFloatingStyle = null;
+            	var size = window.getSize();
+	
+                if (size.x < '.(int)$this->params->get("fpMinWidth", 1200).') {
+                    document.id("itp-fshare").set("class", "itp-fshare-right");
+                } 
                 
                 window.addEvent("resize", function(){
                 	  
-                      window.clearTimeout(document.itpFloatingTimer);
-                      
-                      document.itpFloatingTimer = (function(){
-                          if (window.outerHeight < screen.availHeight) {
-                            document.id("itp-fshare").set("class", "itp-fshare-right");
-                            document.itpFloatingStyle = document.id("itp-fshare").get("style");
-                            document.id("itp-fshare").erase("style");
-                           } else {
-                             document.id("itp-fshare").set("class","itp-fshare-floating");
-                             document.id("itp-fshare").set("style", document.itpFloatingStyle);
-                           }
-                      }).delay(50);
+                	var size = window.getSize();
+                	
+                    if (size.x < '.(int)$this->params->get("fpMinWidth", 1200).') {
+                        document.id("itp-fshare").set("class", "itp-fshare-right");
+                    } else {
+                        document.id("itp-fshare").set("class", "itp-fshare-floating itp-fshare-fstyle");
+                    }
                       
                 });
-                
-             })';
-            
-            $doc     = JFactory::getDocument();
-        	/** @var $doc JDocumentHtml **/
+                    
+             });';
             $doc->addScriptDeclaration($js);
+            
         }
         
         return $html;
