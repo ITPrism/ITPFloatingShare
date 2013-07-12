@@ -1,20 +1,32 @@
-ITPFloatingShare Plugin for Joomla! 
+ITPFloatingShare Plugin for Joomla!
 ==========================
-( Version 1.5 )
---------------------------
-
+( Version 1.7 )
+- - -
 
 Changelog
 ---------
 
-v1.5
-----
+###v1.7
+
+* Removed EasyBlog support
+* Added options for exluding and including K2 categories and articles.
+* Fixed Pinterest button
+* Added option "Kid Directed Site" to Facebook like button
+* Improved 
+
+###v1.6
+
+* Improved floating functionality
+* Improved
+
+###v1.5
+
 * Fixed issues with K2
 * Ported to Joomla! 3.0
 * Improved
 
-v1.4
-----
+###v1.4
+
 * Now works with K2, VirtueMart, JEvents, EasyBlog, MyBlog, ZOO, JoomShopping, Hikashop
 * Added Google Share Button
 * Added some new Twitter languages
@@ -25,8 +37,8 @@ v1.4
 * Added services that convert addresses into shorter ones
 * Improved language
 
-v1.3
------
+###v1.3
+
 * Now works for K2
 * Now works for VirtueMart
 * The buttons appear on the front page ( on the featured articles )
@@ -35,8 +47,8 @@ v1.3
 * Fixed floating position
 * Improved languages
 
-v1.2
------
+###v1.2
+
 * Improved Twitter buttons
  * Added Hashtag
  * Added Recommend name
@@ -63,8 +75,8 @@ v1.2
 * Removed Google Buzz. The service is being discontinued by Google.
 * Removed Yahoo Buzz. The service has been discontinued by Yahoo.
 
-v1.1
-----------------
+###v1.1
+
 *Added Google Plus One, ReTweetMe, Yahoo Buzz, Facebook Send;
 *Removed Facebook Share;
 *Added resize protection;

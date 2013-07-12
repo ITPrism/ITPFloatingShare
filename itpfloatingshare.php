@@ -140,10 +140,6 @@ class plgContentITPFloatingShare extends JPlugin {
                 $result = $this->isJEventsRestricted($article, $context);
                 break;
 
-            case "com_easyblog":
-                $result = $this->isEasyBlogRestricted($article, $context);
-                break;
-                
             case "com_vipportfolio":
                 $result = $this->isVipPortfolioRestricted($article, $context);
                 break;
@@ -205,24 +201,6 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
-        if(
-            ($showInCategories AND ($this->currentView == "category") )
-        OR 
-            ($showInFeatured AND ($this->currentView == "featured") )
-            ) {
-            $articleData        = $this->getArticle($article);
-            $article->id        = JArrayHelper::getValue($articleData,'id');
-            $article->catid     = JArrayHelper::getValue($articleData,'catid');
-            $article->title     = JArrayHelper::getValue($articleData,'title');
-            $article->images    = JArrayHelper::getValue($articleData, 'images');
-            $article->slug      = JArrayHelper::getValue($articleData, 'slug');
-            $article->catslug   = JArrayHelper::getValue($articleData,'catslug');
-        }
-        
-        if(empty($article->id)) {
-            return true;            
-        }
-        
         // Exclude articles
         $excludeArticles = $this->params->get('excludeArticles');
         if(!empty($excludeArticles)){
@@ -279,22 +257,40 @@ class plgContentITPFloatingShare extends JPlugin {
             return true;
         }
         
-        if(strcmp("item", $this->currentView) == 0) {
-            
-            // Fix the issue with media tab
-            $itemVideo = $params->get("itemVideo");
-            static $itemVideoExists = 1;
-            
-            if($itemVideo AND ($itemVideoExists == 1) ) {
-                $itemVideoExists -= 1;
+        $displayInItem         = $this->params->get('k2DisplayInArticles', 0);
+        if(!$displayInItem AND ( strcmp("item", $this->currentView) == 0) ) {
+            return true;
+        }
+        
+        // Exclude articles
+        $excludeArticles = $this->params->get('k2_exclude_articles');
+        if(!empty($excludeArticles)){
+            $excludeArticles = explode(',', $excludeArticles);
+        }
+        settype($excludeArticles, 'array');
+        JArrayHelper::toInteger($excludeArticles);
+        
+        // Exluded categories
+        $excludedCats           = $this->params->get('k2_exclude_cats');
+        if(!empty($excludedCats)){
+            $excludedCats = explode(',', $excludedCats);
+        }
+        settype($excludedCats, 'array');
+        JArrayHelper::toInteger($excludedCats);
+        
+        // Included Articles
+        $includedArticles = $this->params->get('k2_include_articles');
+        if(!empty($includedArticles)){
+            $includedArticles = explode(',', $includedArticles);
+        }
+        settype($includedArticles, 'array');
+        JArrayHelper::toInteger($includedArticles);
+        
+        if(!in_array($article->id, $includedArticles)) {
+            // Check exluded articles
+            if(in_array($article->id, $excludeArticles) OR in_array($article->catid, $excludedCats)){
                 return true;
             }
-            
-            $displayInArticles     = $this->params->get('k2DisplayInArticles', 0);
-            if(!$displayInArticles){
-                return true;
-            }
-            
         }
         
         $this->prepareK2Object($article, $params);
@@ -448,53 +444,6 @@ class plgContentITPFloatingShare extends JPlugin {
         return false;
     }
     
-    /**
-     * 
-     * It's a method that verify restriction for the component "com_easyblog"
-     * @param object $article
-     * @param string $context
-     */
-	private function isEasyBlogRestricted(&$article, $context) {
-        $allowedViews = array("categories", "entry", "latest", "tags");   
-        // Check for correct context
-        if(strpos($context, "easyblog") === false) {
-           return true;
-        }
-        
-        // Only put buttons in allowed views
-        if(!in_array($this->currentView, $allowedViews)) {
-        	return true;
-        }
-        
-   		// Verify the option for displaying in view "categories"
-        $displayInCategories     = $this->params->get('ebDisplayInCategories', 0);
-        if(!$displayInCategories AND (strcmp("categories", $this->currentView) == 0)){
-            return true;
-        }
-        
-   		// Verify the option for displaying in view "latest"
-        $displayInLatest     = $this->params->get('ebDisplayInLatest', 0);
-        if(!$displayInLatest AND (strcmp("latest", $this->currentView) == 0)){
-            return true;
-        }
-        
-		// Verify the option for displaying in view "entry"
-        $displayInEntry     = $this->params->get('ebDisplayInEntry', 0);
-        if(!$displayInEntry AND (strcmp("entry", $this->currentView) == 0)){
-            return true;
-        }
-        
-	    // Verify the option for displaying in view "tags"
-        $displayInTags     = $this->params->get('ebDisplayInTags', 0);
-        if(!$displayInTags AND (strcmp("tags", $this->currentView) == 0)){
-            return true;
-        }
-        
-        $this->prepareEasyBlogObject($article);
-        
-        return false;
-    }
-    
 	/**
      * 
      * It's a method that verify restriction for the component "com_joomshopping"
@@ -570,18 +519,6 @@ class plgContentITPFloatingShare extends JPlugin {
         $matches = array();
             
         preg_match( $this->imgPattern, $article->fulltext, $matches ) ;
-        if(isset($matches[1])) {
-            $article->image_intro = JArrayHelper::getValue($matches, 1, "");
-        }
-            
-    }
-    
-    private function prepareEasyBlogObject(&$article) {
-        
-        $article->image_intro = "";
-        $matches = array();
-            
-        preg_match( $this->imgPattern, $article->content, $matches ) ;
         if(isset($matches[1])) {
             $article->image_intro = JArrayHelper::getValue($matches, 1, "");
         }
@@ -777,10 +714,6 @@ class plgContentITPFloatingShare extends JPlugin {
                 };
                 break;
 
-            case "com_easyblog":
-            	$uri	= EasyBlogRouter::getRoutedURL( 'index.php?option=com_easyblog&view=entry&id=' . $article->id , false , false );
-                break;
-
             case "com_vipportfolio":
                 $uri = JRoute::_($article->link, false);
                 break;
@@ -860,10 +793,6 @@ class plgContentITPFloatingShare extends JPlugin {
                 
                 break;   
 
-            case "com_easyblog":
-                $title = $article->title;
-                break;
-           
             case "com_vipportfolio":
                 $title = $article->title;
                 break;
@@ -920,7 +849,9 @@ class plgContentITPFloatingShare extends JPlugin {
 
             case "com_k2":
     	        if(!empty($article->imageSmall)) {
-    		        $result = JURI::root().$article->imageSmall;
+    		        $root   = JURI::root();
+    	            $root   = substr($root, 0, -1);
+    		        $result = $root.$article->imageSmall;
         		}
                 break;
                 
@@ -928,10 +859,6 @@ class plgContentITPFloatingShare extends JPlugin {
                 $result = JURI::root().$article->image_intro;
                 break;
             
-            case "com_easyblog":
-                $result = JURI::root().$article->image_intro;
-                break;
-                
             case "com_vipportfolio":
                 $result = JURI::root().$article->image_intro;
                 break;
@@ -957,47 +884,6 @@ class plgContentITPFloatingShare extends JPlugin {
         
     }
     
-    /**
-     * 
-     * Load an information about article, if missing, on the view 'category' and 'featured'
-     * @param object $article
-     */
-    private function getArticle(&$article) {
-        
-        $db = JFactory::getDbo();
-        /** @var $db JDatabaseMySQLi **/
-        
-        $query = "
-            SELECT 
-                `#__content`.`id`,
-                `#__content`.`catid`,
-                `#__content`.`alias`,
-                `#__content`.`title`,
-                `#__content`.`images`,
-                `#__categories`.`alias` as category_alias
-                
-            FROM
-                `#__content`
-            INNER JOIN
-                `#__categories`
-            ON
-                `#__content`.`catid`=`#__categories`.`id`
-            WHERE
-                `#__content`.`introtext` SOUNDS LIKE " . $db->quote($article->text); 
-        
-        $db->setQuery($query);
-        $result = $db->loadAssoc();
-        
-        if(!empty($result)) {
-            $result['slug']     = $result['alias'] ? $result['id'].':'.$result['alias'] : $result['id'];
-            $result['catslug']  = $result['category_alias'] ? $result['catid'].':'.$result['category_alias'] : $result['catid'];
-        } else {
-            $result = array();
-        }
-        
-        return $result;
-    }
-    
 	/**
      * A method that make a long url to short url
      * 
@@ -1013,19 +899,26 @@ class plgContentITPFloatingShare extends JPlugin {
             "api_key"   => $this->params->get("shortener_api_key"),
             "service"   => $this->params->get("shortener_service"),
         );
-        $shortUrl 	= new ItpFloatingSharePluginShortUrl($link, $options);
-        $shortLink  = $shortUrl->getUrl();
         
-        if(!$shortLink) {
-        	// Add logger
-            JLog::addLogger(
-                array(
-                    'text_file' => 'error.php',
-                 )
-            );
-            
-            JLog::add($shortUrl->getError(), JLog::ERROR);
-            $shortLink = $link;
+        try {
+        
+            $shortUrl  = new ItpFloatingSharePluginShortUrl($link, $options);
+            $shortLink = $shortUrl->getUrl();
+        
+            // Get original link
+            if(!$shortLink) {
+                $shortLink = $link;
+            }
+        
+        } catch(Exception $e) {
+        
+            JLog::add($e->getMessage());
+        
+            // Get original link
+            if(!$shortLink) {
+                $shortLink = $link;
+            }
+        
         }
         
         return $shortLink;
@@ -1235,6 +1128,10 @@ class plgContentITPFloatingShare extends JPlugin {
             $html .= "&amp;appId=" . $params->get("facebookLikeAppId");
         }
 
+        if($params->get("facebookKidDirectedSite")){
+            $html .= '&amp;kid_directed_site=true';
+        }
+        
         $html .= '" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:' . $params->get("facebookLikeWidth", "450") . 'px; height:' . $height . 'px;" allowTransparency="true"></iframe>';
             
         return $html;
@@ -1278,6 +1175,11 @@ class plgContentITPFloatingShare extends JPlugin {
         if($params->get("facebookLikeFont")){
             $html .= 'font="' . $params->get("facebookLikeFont") . '"';
         }
+        
+        if($params->get("facebookKidDirectedSite")){
+            $html .= ' kid_directed_site="true"';
+        }
+        
         $html .= '></fb:like>
         ';
         
@@ -1322,6 +1224,10 @@ class plgContentITPFloatingShare extends JPlugin {
                 
         if($params->get("facebookLikeFont")){
             $html .= ' data-font="' . $params->get("facebookLikeFont") . '" ';
+        }
+        
+        if($params->get("facebookKidDirectedSite")){
+            $html .= ' data-kid-directed-site="true"';
         }
         
         $html .= '></div>';
@@ -1505,18 +1411,35 @@ class plgContentITPFloatingShare extends JPlugin {
         $html = "";
         if($params->get("pinterestButton")) {
             
-            $media = "";
-            if(!empty($image)) {
-                $media = "&amp;media=" . rawurlencode($image);
+            $html .= '<div class="itp-fshare-pinterest">';
+            
+            if(strcmp("one", $this->params->get('pinterestImages', "one")) == 0) {
+                
+                $media = "";
+                if(!empty($image)) {
+                    $media = "&amp;media=" . rawurlencode($image);
+                }
+                
+                $html .= '<a href="http://pinterest.com/pin/create/button/?url=' . rawurlencode($url) . $media. '&amp;description=' . rawurlencode($title) . '" data-pin-do="buttonPin" data-pin-config="'.$params->get("pinterestType", "beside").'"><img src="//assets.pinterest.com/images/pidgets/pin_it_button.png" /></a>';
+            } else {
+                $html .= '<a href="//pinterest.com/pin/create/button/" data-pin-do="buttonBookmark" ><img src="//assets.pinterest.com/images/pidgets/pin_it_button.png" /></a>';
             }
             
-            $html .= '<div class="itp-fshare-pinterest">';
-            $html .= '<a href="http://pinterest.com/pin/create/button/?url=' . rawurlencode($url) . $media. '&amp;description=' . rawurlencode($title) . '" class="pin-it-button" count-layout="'.$params->get("pinterestType", "horizontal").'"><img border="0" src="//assets.pinterest.com/images/PinExt.png" title="'.JText::_("PLG_CONTENT_ITPFLOATINGSHARE_PIN_IT").'" /></a>';
             $html .= '</div>';
             
             // Load the JS library
             if($params->get("loadPinterestJsLib")) {
-                $html .= '<script src="//assets.pinterest.com/js/pinit.js"></script>';
+                $html .= '
+<script type="text/javascript">
+    (function(d){
+      var f = d.getElementsByTagName("SCRIPT")[0], p = d.createElement("SCRIPT");
+      p.type = "text/javascript";
+      p.async = true;
+      p.src = "//assets.pinterest.com/js/pinit.js";
+      f.parentNode.insertBefore(p, f);
+    }(document));
+</script>
+';
             }
         }
         
@@ -1830,37 +1753,48 @@ class plgContentITPFloatingShare extends JPlugin {
     }
     
     private function genFloating($content) {
-        $html = '<div class="itp-fshare-floating" id="itp-fshare" style="position:fixed; top:' . $this->params->get("fpTop","30") . 'px !important; left:' . $this->params->get("fpLeft","60") . 'px !important;">' . $content . '</div>';
+        
+        $doc     = JFactory::getDocument();
+    	/** @var $doc JDocumentHtml **/
+        
+        $html = '<div class="itp-fshare-floating itp-fshare-fstyle" id="itp-fshare">' . $content . '</div>';
+        
+        $css = '.itp-fshare-fstyle {
+        	position:fixed; 
+        	top:' . $this->params->get("fpTop","30") . 'px !important; 
+        	left:' . $this->params->get("fpLeft","60") . 'px !important;
+    	}';
+        
+        $doc->addStyleDeclaration($css);
         
         if($this->params->get("resizeProtection")) {
-            $js = '
+           
+           JHtml::_('behavior.framework');
+            
+           $js = '
             window.addEvent( "domready" ,  function() {
             
-                document.itpFloatingTimer = null;
-                document.itpFloatingStyle = null;
+            	var size = window.getSize();
+	
+                if (size.x < '.(int)$this->params->get("fpMinWidth", 1200).') {
+                    document.id("itp-fshare").set("class", "itp-fshare-right");
+                } 
                 
                 window.addEvent("resize", function(){
                 	  
-                      window.clearTimeout(document.itpFloatingTimer);
-                      
-                      document.itpFloatingTimer = (function(){
-                          if (window.outerHeight < screen.availHeight) {
-                            document.id("itp-fshare").set("class", "itp-fshare-right");
-                            document.itpFloatingStyle = document.id("itp-fshare").get("style");
-                            document.id("itp-fshare").erase("style");
-                           } else {
-                             document.id("itp-fshare").set("class","itp-fshare-floating");
-                             document.id("itp-fshare").set("style", document.itpFloatingStyle);
-                           }
-                      }).delay(50);
+                	var size = window.getSize();
+                	
+                    if (size.x < '.(int)$this->params->get("fpMinWidth", 1200).') {
+                        document.id("itp-fshare").set("class", "itp-fshare-right");
+                    } else {
+                        document.id("itp-fshare").set("class", "itp-fshare-floating itp-fshare-fstyle");
+                    }
                       
                 });
-                
-             })';
-            
-            $doc     = JFactory::getDocument();
-        	/** @var $doc JDocumentHtml **/
+                    
+             });';
             $doc->addScriptDeclaration($js);
+            
         }
         
         return $html;
