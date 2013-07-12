@@ -232,7 +232,17 @@ class plgContentITPFloatingShare extends JPlugin {
             }
         }
         
+        $this->prepareContent($article);
+        
         return false;
+    }
+    
+    
+    private function prepareContent(&$article) {
+        
+        if((strcmp($this->currentView, "category") == 0) AND empty($article->catslug)) {
+            $article->catslug = $article->id . ":".$article->alias;
+        }
     }
     
 	/**
