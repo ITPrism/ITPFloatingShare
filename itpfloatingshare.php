@@ -900,6 +900,8 @@ class plgContentITPFloatingShare extends JPlugin {
             "service"   => $this->params->get("shortener_service"),
         );
         
+        $shortLink = "";
+        
         try {
         
             $shortUrl  = new ItpFloatingSharePluginShortUrl($link, $options);
