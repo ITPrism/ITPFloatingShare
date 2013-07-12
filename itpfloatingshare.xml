@@ -458,7 +458,7 @@
                    <option value="one">PLG_CONTENT_ITPFLOATINGSHARE_ONE_IMAGE</option>
                    <option value="any">PLG_CONTENT_ITPFLOATINGSHARE_ANY_IMAGE</option>
                 </field>
-                <field name="pinterestType" type="list" default="none" label="PLG_CONTENT_ITPFLOATINGSHARE_PINTEREST_TYPE" description="PLG_CONTENT_ITPFLOATINGSHARE_PINTEREST_TYPE_DESC" >
+                <field name="pinterestType" type="list" default="above" label="PLG_CONTENT_ITPFLOATINGSHARE_PINTEREST_TYPE" description="PLG_CONTENT_ITPFLOATINGSHARE_PINTEREST_TYPE_DESC" >
                    <option value="none">PLG_CONTENT_ITPFLOATINGSHARE_NOT_SHOWN</option>
                    <option value="above">PLG_CONTENT_ITPFLOATINGSHARE_ABOVE_BUTTON</option>
                    <option value="beside">PLG_CONTENT_ITPFLOATINGSHARE_BESIDE_BUTTON</option>
