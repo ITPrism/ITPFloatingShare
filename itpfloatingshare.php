@@ -177,6 +177,10 @@ class plgContentITPFloatingShare extends JPlugin {
            return true;
         }
         
+        if(empty($article->id)) {
+           return true;
+        }
+        
     	/** Check for selected views, which will display the buttons. **/   
         /** If there is a specific set and do not match, return an empty string.**/
         $showInArticles     = $this->params->get('showInArticles');
