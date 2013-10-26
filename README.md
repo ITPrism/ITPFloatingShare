@@ -1,10 +1,17 @@
 ITPFloatingShare Plugin for Joomla!
 ==========================
-( Version 1.7 )
+( Version 1.8 )
 - - -
 
 Changelog
 ---------
+
+###v1.8
+* Added support for EasyBlog.
+* Removed the support for MyBlog.
+* Added two Joomla! events. Now, the extension can be triggered via onContentPrepare, onContentBeforeDisplay and onContentAfterDisplay.
+* Added support for Vip Quotes.
+* Improved
 
 ###v1.7
 
