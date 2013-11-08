@@ -152,6 +152,11 @@ class plgContentITPFloatingShare extends JPlugin {
             case "com_vipquotes":
                 $result = $this->isVipQuotesRestricted($article, $context);
                 break;
+                
+            case "com_userideas":
+                $result = $this->isUserIdeasRestricted($article, $context);
+                break;
+                
             default:
                 $result = true;
                 break;   
@@ -438,6 +443,32 @@ class plgContentITPFloatingShare extends JPlugin {
     
         $displayOnViewAuthor     = $this->params->get('vipquotes_display_author', 0);
         if(!$displayOnViewAuthor){
+            return true;
+        }
+    
+        return false;
+    }
+    
+    /**
+     * Do verification for UserIdeas extension. Is it restricted?
+     *
+     * @param ojbect $article
+     * @param string $context
+     */
+    private function isUserIdeasRestricted(&$article, $context) {
+    
+        // Check for correct context
+        if(strpos($context, "com_userideas") === false) {
+            return true;
+        }
+    
+        // Display only in view 'details'
+        if(strcmp($this->currentView, "details") != 0) {
+            return true;
+        }
+    
+        $displayOnViewDetails  = $this->params->get('userideas_display_details', 0);
+        if(!$displayOnViewDetails){
             return true;
         }
     
@@ -791,6 +822,10 @@ class plgContentITPFloatingShare extends JPlugin {
                 $uri = $article->link;
                 break;
                 
+            case "com_userideas":
+                $uri = JRoute::_($article->link, false);;
+                break;
+                
             default:
                 $uri = "";
                 break;   
@@ -867,6 +902,10 @@ class plgContentITPFloatingShare extends JPlugin {
                 break;
                 
             case "com_vipquotes":
+                $title = $article->title;
+                break;
+                
+            case "com_userideas":
                 $title = $article->title;
                 break;
                 

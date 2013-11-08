@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension version="3.1" type="plugin" group="content" method="upgrade">
+<extension version="3.2" type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_ITPFLOATINGSHARE</name>
     <author>Todor Iliev</author>
     <copyright>Copyright (C) 2013 Todor Iliev ( ITPrism.com ). All rights reserved.</copyright>
     <license>http://www.gnu.org/copyleft/gpl.html GNU/GPL</license>
     <authorEmail>todor@itprism.com</authorEmail>
     <authorUrl>http://itprism.com</authorUrl>
-    <version>1.8</version>
-    <creationDate>26 October, 2013</creationDate>
+    <version>1.9</version>
+    <creationDate>08 November, 2013</creationDate>
     <description><![CDATA[
-    <p><a href="http://itprism.com/free-joomla-extensions/floating-social-share" target="_blank">ITPFloatingShare</a> is a plugin that adds floating or normal republish buttons on your site. The buttons are official widgets from top social media site - Twitter, Facebook, Google Plus One, Google Share, Tumblr, Reddit, LinkedIn, Stumbleupon, Pinterest, BufferApp,...It will help you to find more readers for your posts.</p>
+    <p><a href='http://itprism.com/free-joomla-extensions/floating-social-share' target='_blank'>ITPFloatingShare</a> is a plugin that adds floating or normal republish buttons on your site. The buttons are official widgets from top social media site - Twitter, Facebook, Google Plus One, Google Share, Tumblr, Reddit, LinkedIn, Stumbleupon, Pinterest, BufferApp,...It will help you to find more readers for your posts.</p>
     <p><a href='http://itprism.com/help/82-floatingshare-documentation-faq' target='_blank'>Read documentation</a> that will help you to setup the extensions.</p>
-    <p>Invest in the extension improvement. You can <a href="http://itprism.com/sponsorship" title="Sponsoring" target="_blank">sponsor the extension via SMS, PayPal or Bitcoin</a>.</p>
-    <p><a href="http://itprism.com/" target="_blank">Subscribe for the newsletter</a> to receive information about updates and new ITPrism extensions.</p>
-    <p>Please, <a href="http://extensions.joomla.org/extensions/social-web/social-share/social-multi-share/15678" target="_blank">vote for the extension</a> on Joomla! Extensions Directory</p>
+    <p>Invest in the extension improvement. You can <a href='http://itprism.com/sponsorship' target='_blank'>sponsor the extension via SMS, PayPal or Bitcoin</a>.</p>
+    <p><a href='http://itprism.com/' target='_blank'>Subscribe for the newsletter</a> to receive information about updates and new ITPrism extensions.</p>
+    <p>Please, <a href='http://extensions.joomla.org/extensions/social-web/social-share/social-multi-share/15678' target='_blank'>vote for the extension</a> on Joomla! Extensions Directory</p>
     ]]></description>
     
     <languages  folder="language">
@@ -713,6 +713,12 @@
                 
                 <field name="spacer20" type="spacer" class="text" label="PLG_CONTENT_ITPFLOATINGSHARE_HIKASHOP_SETTINGS" />
                 <field name="hikashop_display" type="radio" default="1" label="PLG_CONTENT_ITPFLOATINGSHARE_HIKASHOP_DISPLAY_IN_DETAILS" description="PLG_CONTENT_ITPFLOATINGSHARE_HIKASHOP_DISPLAY_IN_DETAILS_DESC" class="btn-group">
+                   <option value="0">JNO</option>
+                   <option value="1">JYES</option>
+                </field>
+                
+                <field name="spacer21" type="spacer" class="text" label="PLG_CONTENT_ITPFLOATINGSHARE_USERIDEAS_SETTINGS" />
+                <field name="userideas_display_details" type="radio" default="1" label="PLG_CONTENT_ITPFLOATINGSHARE_USERIDEAS_DISPLAY_IN_DETAILS" description="PLG_CONTENT_ITPFLOATINGSHARE_USERIDEAS_DISPLAY_IN_DETAILS_DESC" class="btn-group">
                    <option value="0">JNO</option>
                    <option value="1">JYES</option>
                 </field>

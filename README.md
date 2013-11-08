@@ -1,10 +1,14 @@
 ITPFloatingShare Plugin for Joomla!
 ==========================
-( Version 1.8 )
+( Version 1.9 )
 - - -
 
 Changelog
 ---------
+
+###v1.9
+* Added support for User Ideas.
+* Improved.
 
 ###v1.8
 * Added support for EasyBlog.
