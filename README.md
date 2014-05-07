@@ -1,10 +1,17 @@
 ITPFloatingShare Plugin for Joomla!
 ==========================
-( Version 1.9 )
+( Version 1.10 )
 - - -
 
 Changelog
 ---------
+
+###v1.10
+* Replaced the option for "Send" button with an option for displaying "Share" one.
+* Added new button type "Button" to Facebook Like.
+* Added language option to LinkedIn button.
+* Added option buttons to be added on a custom location in the content, using indicator {itpshare}.
+* Improved
 
 ###v1.9
 * Added support for User Ideas.
