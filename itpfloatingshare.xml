@@ -148,6 +148,7 @@
                     <option value="standard">PLG_CONTENT_ITPFLOATINGSHARE_STANDARD</option>
                     <option value="box_count">PLG_CONTENT_ITPFLOATINGSHARE_BOX_COUNT</option>
                     <option value="button_count">PLG_CONTENT_ITPFLOATINGSHARE_BUTTON_COUNT</option>
+                    <option value="button">PLG_CONTENT_ITPFLOATINGSHARE_BUTTON</option>
                 </field>
                 <field name="facebookLikeFaces" type="radio" default="0" label="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FACES" description="PLG_CONTENT_ITPFLOATINGSHARE_FACEBOOK_FACES_DESC" class="btn-group">
                    <option value="0">JHIDE</option>

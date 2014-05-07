@@ -20,6 +20,14 @@ jimport('joomla.plugin.plugin');
  */
 class plgContentITPFloatingShare extends JPlugin
 {
+    /**
+     * A JRegistry object holding the parameters for the plugin
+     *
+     * @var    Joomla\Registry\Registry
+     * @since  1.5
+     */
+    public $params = null;
+
     private $locale = "en_US";
     private $fbLocale = "en_US";
     private $plusLocale = "en";
@@ -37,7 +45,7 @@ class plgContentITPFloatingShare extends JPlugin
      *
      * @param    string    $context The context of the content being passed to the plugin.
      * @param    object    $article The article object.  Note $article->text is also available
-     * @param    JRegistry $params  The article params
+     * @param    Joomla\Registry\Registry $params  The article params
      * @param    int       $page    The 'page' number
      *
      * @return void
@@ -84,14 +92,14 @@ class plgContentITPFloatingShare extends JPlugin
 
 
         if ($this->params->get("loadCss")) {
-            $doc->addStyleSheet(JURI::root() . "plugins/content/itpfloatingshare/style.css");
+            $doc->addStyleSheet(JUri::root() . "plugins/content/itpfloatingshare/style.css");
         }
 
         // Load language file
         $this->loadLanguage();
 
         // Generate content
-        $content  = $this->getContent($article, $context);
+        $content  = $this->getContent($article);
         $position = $this->params->get('position');
 
         if($position == 3) {
@@ -119,7 +127,6 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function isRestricted($article, $context, $params)
     {
-
         switch ($this->currentOption) {
             case "com_content":
                 $result = $this->isContentRestricted($article, $context);
@@ -175,8 +182,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     *
-     * Checks allowed articles, exluded categories/articles,... for component COM_CONTENT.
+     * Checks allowed articles, excluded categories/articles,... for component COM_CONTENT.
      *
      * @param object $article
      * @param string $context
@@ -185,7 +191,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isContentRestricted(&$article, $context)
     {
-
         // Check for correct context
         if (false === strpos($context, "com_content")) {
             return true;
@@ -223,7 +228,7 @@ class plgContentITPFloatingShare extends JPlugin
         settype($excludeArticles, 'array');
         JArrayHelper::toInteger($excludeArticles);
 
-        // Exluded categories
+        // Excluded categories
         $excludedCats = $this->params->get('excludeCats');
         if (!empty($excludedCats)) {
             $excludedCats = explode(',', $excludedCats);
@@ -253,11 +258,9 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function prepareContent(&$article)
     {
-
         if ((strcmp($this->currentView, "category") == 0) AND empty($article->catslug)) {
             $article->catslug = $article->id . ":" . $article->alias;
         }
-
     }
 
     /**
@@ -265,13 +268,12 @@ class plgContentITPFloatingShare extends JPlugin
      *
      * @param jIcalEventRepeat $article
      * @param string           $context
-     * @param JRegistry        $params
+     * @param Joomla\Registry\Registry        $params
      *
      * @return bool
      */
     private function isK2Restricted(&$article, $context, $params)
     {
-
         // Check for correct context
         if (strpos($context, "com_k2") === false) {
             return true;
@@ -316,7 +318,7 @@ class plgContentITPFloatingShare extends JPlugin
         JArrayHelper::toInteger($includedArticles);
 
         if (!in_array($article->id, $includedArticles)) {
-            // Check exluded articles
+            // Check excluded articles
             if (in_array($article->id, $excludeArticles) OR in_array($article->catid, $excludedCats)) {
                 return true;
             }
@@ -331,17 +333,15 @@ class plgContentITPFloatingShare extends JPlugin
      * Prepare some elements of the K2 object.
      *
      * @param object    $article
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      */
     private function prepareK2Object(&$article, $params)
     {
-
         if (empty($article->metadesc)) {
             $introtext         = strip_tags($article->introtext);
             $metaDescLimit     = $params->get("metaDescLimit", 150);
             $article->metadesc = substr($introtext, 0, $metaDescLimit);
         }
-
     }
 
     /**
@@ -354,7 +354,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isEasyBlogRestricted(&$article, $context)
     {
-
         $allowedViews = array("categories", "entry", "latest", "tags");
         // Check for correct context
         if (strpos($context, "easyblog") === false) {
@@ -397,7 +396,6 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function prepareEasyBlogObject(&$article)
     {
-
         $article->image_intro = "";
         $matches              = array();
 
@@ -405,7 +403,6 @@ class plgContentITPFloatingShare extends JPlugin
         if (isset($matches[1])) {
             $article->image_intro = JArrayHelper::getValue($matches, 1, "");
         }
-
     }
 
     /**
@@ -418,7 +415,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isJEventsRestricted(&$article, $context)
     {
-
         // Display buttons only in the description
         if (!is_a($article, "jIcalEventRepeat")) {
             return true;
@@ -451,7 +447,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isVipQuotesRestricted($context)
     {
-
         // Check for correct context
         if (strpos($context, "com_vipquotes") === false) {
             return true;
@@ -485,7 +480,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isUserIdeasRestricted($context)
     {
-
         // Check for correct context
         if (strpos($context, "com_userideas") === false) {
             return true;
@@ -514,7 +508,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isVirtuemartRestricted(&$article, $context)
     {
-
         // Check for correct context
         if (strpos($context, "com_virtuemart") === false) {
             return true;
@@ -531,7 +524,7 @@ class plgContentITPFloatingShare extends JPlugin
             return true;
         }
 
-        // Preapare VirtueMart object
+        // Prepare VirtueMart object
         $this->prepareVirtuemartObject($article);
 
         return false;
@@ -539,7 +532,6 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function prepareVirtuemartObject(&$article)
     {
-
         $article->image_intro = "";
 
         if (!empty($article->id)) {
@@ -560,7 +552,6 @@ class plgContentITPFloatingShare extends JPlugin
             if (!empty($fileURL)) {
                 $article->image_intro = $fileURL;
             }
-
         }
     }
 
@@ -573,15 +564,8 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isVipPortfolioRestricted($context)
     {
-
         // Check for correct context
-        if (strpos($context, "com_vipportfolio") === false) {
-            return true;
-        }
-
-        // Verify the option for displaying in layout "lineal"
-        $displayInLineal = $this->params->get('vipportfolio_lineal', 0);
-        if (!$displayInLineal) {
+        if (false === strpos($context, "com_vipportfolio.details")) {
             return true;
         }
 
@@ -597,7 +581,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isZooRestricted($context)
     {
-
         // Check for correct context
         if (false === strpos($context, "com_zoo")) {
             return true;
@@ -636,7 +619,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isJoomShoppingRestricted(&$article, $context)
     {
-
         // Check for correct context
         if (false === strpos($context, "com_content.article")) {
             return true;
@@ -655,7 +637,6 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function prepareJoomShoppingObject(&$article)
     {
-
         $article->image_intro = "";
 
         if (!empty($article->product_id)) {
@@ -677,7 +658,6 @@ class plgContentITPFloatingShare extends JPlugin
                 $config               = JSFactory::getConfig();
                 $article->image_intro = $config->image_product_live_path . "/" . $imageName;
             }
-
         }
     }
 
@@ -691,7 +671,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function isHikaShopRestricted(&$article, $context)
     {
-
         // Check for correct context
         if (false === strpos($context, "text")) {
             return true;
@@ -715,7 +694,6 @@ class plgContentITPFloatingShare extends JPlugin
 
     private function prepareHikashopObject(&$article)
     {
-
         $article->image_intro = "";
         $article->id          = null;
 
@@ -746,22 +724,21 @@ class plgContentITPFloatingShare extends JPlugin
             if (!empty($productIds)) {
                 $article->id = array_shift($productIds);
             }
-
         }
 
         if (!empty($article->id)) {
             $db = JFactory::getDbo();
             /** @var $db JDatabaseMySQLi * */
 
-            $qiery = $db->getQuery(true);
+            $query = $db->getQuery(true);
 
-            $qiery
+            $query
                 ->select("#__hikashop_product.product_name, #__hikashop_product.product_page_title, #__hikashop_file.file_path")
                 ->from("#__hikashop_product")
                 ->join("LEFT", "#__hikashop_file ON #__hikashop_product.product_id = #__hikashop_file.file_ref_id")
                 ->where("#__hikashop_product.product_id=" . (int)$article->id);
 
-            $db->setQuery($qiery, 0, 1);
+            $db->setQuery($query, 0, 1);
             $result = $db->loadObject();
 
             if (!empty($result)) {
@@ -785,11 +762,10 @@ class plgContentITPFloatingShare extends JPlugin
      * Generate content.
      *
      * @param   object $article The article object.  Note $article->text is also available
-     * @param   string $context The article params
      *
      * @return  string      Returns html code or empty string.
      */
-    private function getContent(&$article, $context)
+    private function getContent(&$article)
     {
         $url   = $this->getUrl($article);
         $title = $this->getTitle($article);
@@ -1088,7 +1064,7 @@ class plgContentITPFloatingShare extends JPlugin
      *
      * @param string    $title  Article Title
      * @param string    $url    Article URL
-     * @param JRegistry $params Plugin parameters
+     * @param Joomla\Registry\Registry $params Plugin parameters
      *
      * @return string
      */
@@ -1111,7 +1087,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $title
      *
@@ -1119,7 +1095,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function getTwitter($params, $url, $title)
     {
-
         $html = "";
         if ($params->get("twitterButton")) {
 
@@ -1148,7 +1123,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
@@ -1203,14 +1178,13 @@ class plgContentITPFloatingShare extends JPlugin
     /**
      * Render the Google plus one in standart syntax.
      *
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
      */
     private function genGooglePlus($params, $url)
     {
-
         $annotation = "";
         if ($params->get("plusAnnotation")) {
             $annotation = ' annotation="' . $params->get("plusAnnotation") . '"';
@@ -1224,7 +1198,7 @@ class plgContentITPFloatingShare extends JPlugin
     /**
      * Render the Google plus one in HTML5 syntax.
      *
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
@@ -1242,7 +1216,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
@@ -1296,7 +1270,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $layout
      * @param string    $faces
@@ -1306,11 +1280,10 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function genFacebookLikeIframe($params, $url, $layout, $faces, $height)
     {
-
         $html = '
             <iframe src="//www.facebook.com/plugins/like.php?';
 
-        $html .= 'href=' . rawurlencode($url) . '&amp;send=' . $params->get("facebookLikeSend", 0) . '&amp;locale=' . $this->fbLocale . '&amp;layout=' . $layout . '&amp;show_faces=' . $faces . '&amp;width=' . $params->get("facebookLikeWidth", "450") . '&amp;action=' . $params->get("facebookLikeAction", 'like') . '&amp;colorscheme=' . $params->get("facebookLikeColor", 'light') . '&amp;height=' . $height . '';
+        $html .= 'href=' . rawurldecode(html_entity_decode($url, ENT_COMPAT, 'UTF-8')) . '&amp;send=' . $params->get("facebookLikeSend", 0) . '&amp;locale=' . $this->fbLocale . '&amp;layout=' . $layout . '&amp;show_faces=' . $faces . '&amp;width=' . $params->get("facebookLikeWidth", "450") . '&amp;action=' . $params->get("facebookLikeAction", 'like') . '&amp;colorscheme=' . $params->get("facebookLikeColor", 'light') . '&amp;height=' . $height . '';
         if ($params->get("facebookLikeFont")) {
             $html .= "&amp;font=" . $params->get("facebookLikeFont");
         }
@@ -1328,7 +1301,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $layout
      * @param string    $faces
@@ -1337,7 +1310,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function genFacebookLikeXfbml($params, $url, $layout, $faces)
     {
-
         $html = "";
 
         if ($params->get("facebookRootDiv", 1)) {
@@ -1386,7 +1358,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $layout
      * @param string    $faces
@@ -1444,7 +1416,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
@@ -1468,7 +1440,7 @@ class plgContentITPFloatingShare extends JPlugin
                 $html .= '<script src="//platform.linkedin.com/in.js">lang: ' . $locale . '</script>';
             }
 
-            $html .= '<script type="IN/Share" data-url="' . rawurldecode(html_entity_decode($url, ENT_COMPAT, 'UTF-8'))  . '" data-counter="' . $params->get("linkedInType", 'right') . '"></script>
+            $html .= '<script type="IN/Share" data-url="' . rawurldecode(html_entity_decode($url, ENT_COMPAT, 'UTF-8')) . '" data-counter="' . $params->get("linkedInType", 'right') . '"></script>
             </div>
             ';
         }
@@ -1477,7 +1449,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $title
      *
@@ -1485,7 +1457,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function getReddit($params, $url, $title)
     {
-
         $html = "";
         if ($params->get("redditButton")) {
 
@@ -1587,13 +1558,12 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      *
      * @return string
      */
     private function getTumblr($params)
     {
-
         $html = "";
         if ($params->get("tumblrButton")) {
 
@@ -1641,7 +1611,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      * @param string    $title
      * @param string    $image
@@ -1650,7 +1620,6 @@ class plgContentITPFloatingShare extends JPlugin
      */
     private function getPinterest($params, $url, $title, $image)
     {
-
         $html = "";
         if ($params->get("pinterestButton")) {
 
@@ -1680,14 +1649,13 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
      */
     private function getStumbpleUpon($params, $url)
     {
-
         $html = "";
         if ($params->get("stumbleButton")) {
 
@@ -1710,7 +1678,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string $url
      * @param string $title
      * @param string $image
@@ -1901,7 +1869,7 @@ class plgContentITPFloatingShare extends JPlugin
     }
 
     /**
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
@@ -1958,14 +1926,13 @@ class plgContentITPFloatingShare extends JPlugin
     /**
      * Render the Google Share in standard syntax.
      *
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
      */
     private function genGoogleShare($params, $url)
     {
-
         $annotation = "";
         if ($params->get("gsAnnotation")) {
             $annotation = ' annotation="' . $params->get("gsAnnotation") . '"';
@@ -1984,14 +1951,13 @@ class plgContentITPFloatingShare extends JPlugin
     /**
      * Render the Google Share in HTML5 syntax.
      *
-     * @param JRegistry $params
+     * @param Joomla\Registry\Registry $params
      * @param string    $url
      *
      * @return string
      */
     private function genGoogleShareHTML5($params, $url)
     {
-
         $annotation = "";
         if ($params->get("gsAnnotation")) {
             $annotation = ' data-annotation="' . $params->get("gsAnnotation") . '"';
@@ -2027,7 +1993,7 @@ class plgContentITPFloatingShare extends JPlugin
             $js = 'var itpFloatingShareMinWidth = '.(int)$this->params->get("fpMinWidth", 1200).';';
             $doc->addScriptDeclaration($js);
 
-            if(version_compare(JVERSION, "3") < 0) { // Use Mootools on Joomla! 2.5
+            if (version_compare(JVERSION, "3") < 0) { // Use Mootools on Joomla! 2.5
 
                 JHtml::_('behavior.framework');
                 $doc->addScript("plugins/content/itpfloatingshare/itpfloatingsharej2.js");
